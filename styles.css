@@ -798,11 +798,24 @@ kbd {
 
   #app {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--header-h) minmax(220px, 1fr) minmax(240px, 38dvh);
+    grid-template-rows: var(--header-h) minmax(340px, 1fr) minmax(160px, 28dvh);
     grid-template-areas:
       "header"
       "stage"
       "sidebar";
+  }
+
+  /* Controls overlay the cube so the 3D view can use full stage height */
+  #stage { position: relative; }
+  #viewport { flex: 1 1 auto; min-height: 280px; }
+  .controls-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-top: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(15,17,23,0.15) 0%, rgba(15,17,23,0.92) 28%, rgba(26,29,39,0.98) 100%);
+    padding-bottom: max(8px, var(--safe-bottom));
   }
 
   header {
@@ -898,7 +911,7 @@ kbd {
 /* Narrow phones (~390 and below) */
 @media (max-width: 430px) {
   #app {
-    grid-template-rows: var(--header-h) minmax(240px, 1fr) minmax(250px, 40dvh);
+    grid-template-rows: var(--header-h) minmax(360px, 1fr) minmax(150px, 26dvh);
   }
 
   .autoplay-label {
@@ -945,14 +958,14 @@ kbd {
 /* Tall portrait: balanced cube + sheet */
 @media (max-width: 900px) and (orientation: portrait) and (min-height: 740px) {
   #app {
-    grid-template-rows: var(--header-h) minmax(280px, 1fr) minmax(280px, 40dvh);
+    grid-template-rows: var(--header-h) minmax(420px, 1fr) minmax(180px, 28dvh);
   }
 }
 
 /* Short phones / landscape phones: keep usable */
 @media (max-width: 900px) and (max-height: 560px) {
   #app {
-    grid-template-rows: 48px minmax(160px, 1fr) minmax(0, 52dvh);
+    grid-template-rows: 48px minmax(200px, 1fr) minmax(0, 36dvh);
   }
   .move-pad button { min-height: 40px; font-size: 0.8rem; }
   .controls-bar { padding: 6px 10px; gap: 6px; }
@@ -988,3 +1001,38 @@ kbd {
     grid-template-columns: 1fr minmax(340px, 400px);
   }
 }
+
+/* One-click restore — always visible & distinct */
+.action-row button.restore-btn {
+  background: #2a3344;
+  border-color: #5b8def;
+  color: #dce8ff;
+  font-weight: 600;
+}
+.action-row button.restore-btn:hover {
+  background: #334058;
+  border-color: #7aa2f7;
+}
+@media (max-width: 430px) {
+  .action-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .action-row #btn-scramble,
+  .action-row #btn-reset {
+    grid-column: span 1;
+    min-height: 48px;
+    font-size: 0.95rem;
+  }
+  .action-row #btn-undo,
+  .action-row #btn-more {
+    min-height: 44px;
+  }
+}
+/* compact overlay pad */
+
+@media (max-width: 900px) {
+  .move-pad { gap: 4px; }
+  .move-pad button { min-height: 40px; padding: 6px 4px; }
+  .controls-bar { gap: 6px; padding-top: 8px; }
+}
+

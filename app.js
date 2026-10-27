@@ -249,8 +249,8 @@ const SHORTCUTS = {
   ],
   ops: [
     { keys: ['S'], label: '打亂（20 步）' },
-    { keys: ['Esc'], label: '還原到已還原狀態' },
-    { keys: ['0'], label: '還原（同上）' },
+    { keys: ['Esc'], label: '一鍵還原（已還原狀態）' },
+    { keys: ['0'], label: '一鍵還原（同上）' },
     { keys: ['Z'], label: '撤銷上一步' },
     { keys: ['Ctrl', 'Z'], label: '撤銷上一步' },
   ],
@@ -760,8 +760,9 @@ function initThree() {
 
   const w = viewport.clientWidth;
   const h = viewport.clientHeight;
-  camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 100);
-  camera.position.set(5.2, 4.2, 6.2);
+  camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 100);
+  // Closer default framing so the cube reads larger on phones
+  camera.position.set(4.1, 3.35, 4.9);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -772,8 +773,8 @@ function initThree() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
-  controls.minDistance = 4;
-  controls.maxDistance = 14;
+  controls.minDistance = 3.2;
+  controls.maxDistance = 12;
   controls.target.set(0, 0, 0);
   controls.enablePan = false;
   controls.rotateSpeed = 0.85;
@@ -791,6 +792,7 @@ function initThree() {
   scene.add(fill);
 
   cube = new RubiksCube(scene);
+  fitCubeInView();
 
   window.addEventListener('resize', onResize);
   if (typeof ResizeObserver !== 'undefined') {
@@ -804,6 +806,26 @@ function initThree() {
   animate();
 }
 
+
+function fitCubeInView() {
+  if (!camera || !controls) return;
+  const viewport = document.getElementById('viewport');
+  if (!viewport) return;
+  const w = Math.max(1, viewport.clientWidth);
+  const h = Math.max(1, viewport.clientHeight);
+  const narrow = w < 900;
+  // Keep a comfortable framed distance; pull in more on portrait phones
+  const portrait = h >= w;
+  let dist = narrow ? (portrait ? 6.2 : 7.0) : 8.2;
+  if (narrow && portrait && h < 700) dist = 5.8;
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  if (dir.lengthSq() < 1e-6) dir.set(0.55, 0.45, 0.7).normalize();
+  camera.position.copy(controls.target).addScaledVector(dir, dist);
+  camera.fov = narrow ? 36 : 38;
+  camera.updateProjectionMatrix();
+  controls.update();
+}
+
 function onResize() {
   const viewport = document.getElementById('viewport');
   if (!viewport || !camera || !renderer) return;
@@ -812,6 +834,7 @@ function onResize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
+  fitCubeInView();
 }
 
 function animate() {
@@ -1084,9 +1107,10 @@ function bindUI() {
     cube.scramble(20);
   });
   document.getElementById('btn-reset').addEventListener('click', () => {
-    if (demoRunning) return;
+    demoRunning = false;
+    stopVoice();
     cube.reset();
-    setStatus('已還原');
+    setStatus('已一鍵還原');
   });
   document.getElementById('btn-undo').addEventListener('click', () => cube.undo());
 
@@ -1203,7 +1227,7 @@ function onKeyDown(e) {
   }
   if (key === 'Escape' || key === '0') {
     cube.reset();
-    setStatus('已還原');
+    setStatus('已一鍵還原');
     e.preventDefault();
     return;
   }
