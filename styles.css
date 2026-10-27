@@ -798,7 +798,7 @@ kbd {
 
   #app {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--header-h) minmax(340px, 1fr) minmax(160px, 28dvh);
+    grid-template-rows: var(--header-h) minmax(420px, 1fr) minmax(140px, 24dvh);
     grid-template-areas:
       "header"
       "stage"
@@ -807,16 +807,51 @@ kbd {
 
   /* Controls overlay the cube so the 3D view can use full stage height */
   #stage { position: relative; }
-  #viewport { flex: 1 1 auto; min-height: 280px; }
+  #viewport { flex: 1 1 auto; min-height: 360px; }
   .controls-bar {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    border-top: 1px solid var(--border);
-    background: linear-gradient(180deg, rgba(15,17,23,0.15) 0%, rgba(15,17,23,0.92) 28%, rgba(26,29,39,0.98) 100%);
+    border-top: none;
+    background: linear-gradient(180deg, rgba(15,17,23,0) 0%, rgba(15,17,23,0.55) 40%, rgba(26,29,39,0.94) 100%);
     padding-bottom: max(8px, var(--safe-bottom));
   }
+  .controls-bar.listen-only .move-pad[hidden] { display: none !important; }
+  .listen-primary-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .play-all-btn {
+    flex: 1;
+    min-height: 48px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+  }
+  .play-all-btn:hover { background: var(--accent-hover); }
+  .stop-all-btn {
+    min-height: 48px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #2a2030;
+    color: #ffb4b4;
+    font-weight: 600;
+  }
+  .show-pad-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .compact-actions { opacity: 0.92; }
 
   header {
     padding: 0 12px;
@@ -911,7 +946,7 @@ kbd {
 /* Narrow phones (~390 and below) */
 @media (max-width: 430px) {
   #app {
-    grid-template-rows: var(--header-h) minmax(360px, 1fr) minmax(150px, 26dvh);
+    grid-template-rows: var(--header-h) minmax(440px, 1fr) minmax(130px, 22dvh);
   }
 
   .autoplay-label {
@@ -958,7 +993,7 @@ kbd {
 /* Tall portrait: balanced cube + sheet */
 @media (max-width: 900px) and (orientation: portrait) and (min-height: 740px) {
   #app {
-    grid-template-rows: var(--header-h) minmax(420px, 1fr) minmax(180px, 28dvh);
+    grid-template-rows: var(--header-h) minmax(520px, 1fr) minmax(160px, 24dvh);
   }
 }
 
@@ -1034,5 +1069,12 @@ kbd {
   .move-pad { gap: 4px; }
   .move-pad button { min-height: 40px; padding: 6px 4px; }
   .controls-bar { gap: 6px; padding-top: 8px; }
+}
+
+/* Listen-only: bigger cube, no middle move pad */
+body.listen-first .move-pad { display: none !important; }
+body.listen-first.mode-free .move-pad:not([hidden]) { display: grid !important; }
+@media (max-width: 900px) {
+  body.listen-first #viewport { min-height: 380px; }
 }
 

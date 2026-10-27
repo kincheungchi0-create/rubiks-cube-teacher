@@ -758,10 +758,11 @@ async function playStepLesson() {
     await new Promise((r) => setTimeout(r, 600));
     if (!demoRunning) return; // 可能被一鍵還原取消
 
+    if (lessonAbort) return;
     cube.reset();
     if (step.demoSetup && step.demoSetup.length) {
       for (const tok of step.demoSetup) {
-        if (!demoRunning) return;
+        if (!demoRunning || lessonAbort) return;
         await animateMovePromise(parseMove(tok), true);
       }
     }
@@ -771,7 +772,7 @@ async function playStepLesson() {
       ? parseAlgorithm(step.algos[0].moves)
       : moves;
     for (const m of fallback) {
-      if (!demoRunning) return;
+      if (!demoRunning || lessonAbort) return;
       await animateMovePromise(m, false);
     }
     setStatus('點扭示範完成 — 旁白繼續可以聽');
@@ -781,6 +782,61 @@ async function playStepLesson() {
   }
 
   await voicePromise;
+}
+
+
+async function playFullCourse() {
+  if (courseRunning || demoRunning || cube.busy()) {
+    setStatus('等而家嘅教學做完先，或者撳停止', true);
+    return;
+  }
+  courseRunning = true;
+  lessonAbort = false;
+  const stopAll = document.getElementById('btn-stop-all');
+  const playAll = document.getElementById('btn-play-all');
+  if (stopAll) stopAll.hidden = false;
+  if (playAll) {
+    playAll.disabled = true;
+    playAll.textContent = '教學播放中…';
+  }
+  setMode('teach');
+  setStatus('開始由頭聽教學 — 唔使你親手扭', true);
+
+  try {
+    for (let i = 0; i < STEPS.length; i++) {
+      if (lessonAbort) break;
+      currentStep = i;
+      renderStep();
+      await playStepLesson();
+      if (lessonAbort) break;
+      // short pause between steps
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    if (!lessonAbort) setStatus('成套教學播完 — 可以再撳「由頭聽教學」');
+  } finally {
+    courseRunning = false;
+    if (stopAll) stopAll.hidden = true;
+    if (playAll) {
+      playAll.disabled = false;
+      playAll.textContent = '由頭聽教學';
+    }
+  }
+}
+
+function stopFullCourse() {
+  lessonAbort = true;
+  courseRunning = false;
+  demoRunning = false;
+  stopVoice();
+  cube.reset();
+  const stopAll = document.getElementById('btn-stop-all');
+  const playAll = document.getElementById('btn-play-all');
+  if (stopAll) stopAll.hidden = true;
+  if (playAll) {
+    playAll.disabled = false;
+    playAll.textContent = '由頭聽教學';
+  }
+  setStatus('已停止教學');
 }
 
 function maybeAutoplayStepVoice() {
@@ -796,6 +852,8 @@ let currentStep = 0;
 let mode = 'teach';
 let pendingDouble = false;
 let demoRunning = false;
+let lessonAbort = false;
+let courseRunning = false;
 
 function initThree() {
   const viewport = document.getElementById('viewport');
@@ -806,7 +864,7 @@ function initThree() {
   const h = viewport.clientHeight;
   camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 100);
   // Closer default framing so the cube reads larger on phones
-  camera.position.set(4.1, 3.35, 4.9);
+  camera.position.set(3.5, 2.9, 4.2);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -817,7 +875,7 @@ function initThree() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
-  controls.minDistance = 3.2;
+  controls.minDistance = 2.8;
   controls.maxDistance = 12;
   controls.target.set(0, 0, 0);
   controls.enablePan = false;
@@ -860,12 +918,13 @@ function fitCubeInView() {
   const narrow = w < 900;
   // Keep a comfortable framed distance; pull in more on portrait phones
   const portrait = h >= w;
-  let dist = narrow ? (portrait ? 6.2 : 7.0) : 8.2;
-  if (narrow && portrait && h < 700) dist = 5.8;
+  let dist = narrow ? (portrait ? 5.0 : 6.0) : 7.2;
+  if (narrow && portrait && h < 700) dist = 4.6;
+  if (narrow && portrait && h >= 740) dist = 4.8;
   const dir = camera.position.clone().sub(controls.target).normalize();
   if (dir.lengthSq() < 1e-6) dir.set(0.55, 0.45, 0.7).normalize();
   camera.position.copy(controls.target).addScaledVector(dir, dist);
-  camera.fov = narrow ? 36 : 38;
+  camera.fov = narrow ? 32 : 36;
   camera.updateProjectionMatrix();
   controls.update();
 }
@@ -1083,6 +1142,12 @@ function setMode(next) {
   document.getElementById('btn-mode-free').classList.toggle('active', mode === 'free');
   setStatus(mode === 'teach' ? '教學模式 — 跟住步驟學公式同快捷鍵' : '自由練習 — 打亂之後自己扭');
   if (mode === 'teach') switchTab('teach');
+  const movePadEl = document.getElementById('move-pad');
+  const showPadEl = document.getElementById('show-move-pad');
+  if (movePadEl && showPadEl) {
+    if (mode === 'free' && showPadEl.checked) movePadEl.removeAttribute('hidden');
+    if (mode === 'teach' && !showPadEl.checked) movePadEl.setAttribute('hidden', '');
+  }
 }
 
 async function runAlgoDemo(movesStr, setup) {
@@ -1176,6 +1241,25 @@ function bindUI() {
   });
   document.getElementById('btn-demo').addEventListener('click', () => playStepLesson());
   document.getElementById('btn-listen').addEventListener('click', () => playStepLesson());
+  const playAllBtn = document.getElementById('btn-play-all');
+  if (playAllBtn) playAllBtn.addEventListener('click', () => playFullCourse());
+  const stopAllBtn = document.getElementById('btn-stop-all');
+  if (stopAllBtn) stopAllBtn.addEventListener('click', () => stopFullCourse());
+  const stopVoiceBtn = document.getElementById('btn-stop-voice');
+  if (stopVoiceBtn) {
+    stopVoiceBtn.addEventListener('click', () => {
+      lessonAbort = true;
+    });
+  }
+  const showPad = document.getElementById('show-move-pad');
+  const movePad = document.getElementById('move-pad');
+  if (showPad && movePad) {
+    showPad.addEventListener('change', () => {
+      if (showPad.checked) movePad.removeAttribute('hidden');
+      else movePad.setAttribute('hidden', '');
+    });
+  }
+  document.body.classList.add('listen-first');
   document.getElementById('btn-stop-voice').addEventListener('click', () => {
     stopVoice();
     setStatus('已停止旁白');

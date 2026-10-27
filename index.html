@@ -18,7 +18,7 @@
       <h1><span class="logo" aria-hidden="true"></span><span class="title-text">魔方教室</span></h1>
       <div class="header-right">
         <label class="autoplay-toggle" title="換步驟時自動播粵語旁白同埋點扭示範">
-          <input type="checkbox" id="autoplay-voice" />
+          <input type="checkbox" id="autoplay-voice" checked />
           <span class="autoplay-label">自動教學</span>
         </label>
         <div class="mode-toggle" role="tablist" aria-label="模式">
@@ -35,13 +35,17 @@
     <div id="stage">
       <div id="viewport" aria-label="立體魔方視圖"></div>
 
-      <div id="controls" class="controls-bar" aria-label="操作區">
-        <div class="move-pad" id="move-pad" aria-label="轉面掣"></div>
+      <div id="controls" class="controls-bar listen-only" aria-label="操作區">
+        <div class="listen-primary-row">
+          <button type="button" id="btn-play-all" class="primary play-all-btn">由頭聽教學</button>
+          <button type="button" id="btn-stop-all" class="stop-all-btn" hidden>停止</button>
+        </div>
+        <div class="move-pad" id="move-pad" aria-label="轉面掣" hidden></div>
         <div class="controls-secondary">
-          <div class="action-row">
-            <button type="button" id="btn-scramble" class="primary" title="快捷鍵 S">打亂<span class="kbd-hint"> <kbd>S</kbd></span></button>
+          <div class="action-row compact-actions">
+            <button type="button" id="btn-scramble" title="快捷鍵 S">打亂<span class="kbd-hint"> <kbd>S</kbd></span></button>
             <button type="button" id="btn-reset" class="restore-btn" title="一鍵還原到已還原狀態（Esc / 0）">一鍵還原<span class="kbd-hint"> <kbd>Esc</kbd></span></button>
-            <button type="button" id="btn-undo" title="快捷鍵 Z / Ctrl+Z">撤銷<span class="kbd-hint"> <kbd>Z</kbd></span></button>
+            <button type="button" id="btn-undo" title="快捷鍵 Z / Ctrl+Z" hidden>撤銷<span class="kbd-hint"> <kbd>Z</kbd></span></button>
             <button type="button" id="btn-more" class="more-btn" aria-expanded="false" aria-controls="more-panel" title="更多設定">更多</button>
           </div>
           <div class="more-panel" id="more-panel" hidden>
@@ -50,6 +54,7 @@
               <input type="range" id="speed" min="0.4" max="2.5" step="0.1" value="1" />
               <span id="speed-label">1.0×</span>
             </div>
+            <label class="show-pad-toggle"><input type="checkbox" id="show-move-pad" /> 顯示手動轉面掣（自由練習）</label>
           </div>
         </div>
       </div>
@@ -76,7 +81,7 @@
             </div>
             <div class="nav-row">
               <button type="button" id="btn-prev" title="快捷鍵 [">上一步<span class="kbd-hint"> <kbd>[</kbd></span></button>
-              <button type="button" id="btn-demo" class="demo">播教學（旁白＋扭）</button>
+              <button type="button" id="btn-demo" class="demo">再播呢步</button>
               <button type="button" id="btn-next" title="快捷鍵 ]">下一步<span class="kbd-hint"> <kbd>]</kbd></span></button>
             </div>
           </section>
@@ -104,7 +109,7 @@
           <section class="panel" id="tips-panel">
             <h2>小貼士</h2>
             <p class="hint" style="margin-top:0">
-              拖曳魔方轉視角。中心塊顏色決定每面顏色——白色對黃色、紅色對橙色、藍色對綠色。保持白色喺上面、綠色喺前面最易跟教學。撳「播教學」會一邊用粵語講解、一邊示範點扭；可開「自動教學」。
+              拖曳魔方轉視角。中心塊顏色決定每面顏色——白色對黃色、紅色對橙色、藍色對綠色。保持白色喺上面、綠色喺前面最易跟教學。撳「由頭聽教學」就得——程式會自動旁白同示範點扭，唔使你親手扭。中間轉面掣已收起。
             </p>
           </section>
         </div>
