@@ -825,7 +825,7 @@ function initThree() {
   const h = viewport.clientHeight;
   camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 100);
   // Closer default framing so the cube reads larger on phones
-  camera.position.set(4.6, 3.7, 5.5);
+  camera.position.set(5.4, 4.3, 6.4);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -879,13 +879,13 @@ function fitCubeInView() {
   const narrow = w < 900;
   // Keep a comfortable framed distance; pull in more on portrait phones
   const portrait = h >= w;
-  let dist = narrow ? (portrait ? 6.2 : 7.0) : 8.0;
-  if (narrow && portrait && h < 700) dist = 5.8;
-  if (narrow && portrait && h >= 740) dist = 6.0;
+  let dist = narrow ? (portrait ? 7.4 : 8.2) : 9.0;
+  if (narrow && portrait && h < 700) dist = 7.0;
+  if (narrow && portrait && h >= 740) dist = 7.2;
   const dir = camera.position.clone().sub(controls.target).normalize();
   if (dir.lengthSq() < 1e-6) dir.set(0.55, 0.45, 0.7).normalize();
   camera.position.copy(controls.target).addScaledVector(dir, dist);
-  camera.fov = narrow ? 38 : 40;
+  camera.fov = narrow ? 42 : 44;
   camera.updateProjectionMatrix();
   controls.update();
 }

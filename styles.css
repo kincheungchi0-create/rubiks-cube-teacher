@@ -798,7 +798,7 @@ kbd {
 
   #app {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--header-h) minmax(300px, 1fr) minmax(180px, 32dvh);
+    grid-template-rows: var(--header-h) minmax(240px, 0.9fr) minmax(200px, 36dvh);
     grid-template-areas:
       "header"
       "stage"
@@ -946,7 +946,7 @@ kbd {
 /* Narrow phones (~390 and below) */
 @media (max-width: 430px) {
   #app {
-    grid-template-rows: var(--header-h) minmax(300px, 1fr) minmax(180px, 32dvh);
+    grid-template-rows: var(--header-h) minmax(240px, 0.9fr) minmax(200px, 36dvh);
   }
 
   .autoplay-label {
@@ -993,7 +993,7 @@ kbd {
 /* Tall portrait: balanced cube + sheet */
 @media (max-width: 900px) and (orientation: portrait) and (min-height: 740px) {
   #app {
-    grid-template-rows: var(--header-h) minmax(340px, 1fr) minmax(200px, 34dvh);
+    grid-template-rows: var(--header-h) minmax(260px, 0.9fr) minmax(220px, 38dvh);
   }
 }
 
