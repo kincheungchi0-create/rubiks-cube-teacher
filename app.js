@@ -672,7 +672,7 @@ function runCaptions(script) {
       }
       showCaptionPair(sentences, i);
       const s = sentences[i];
-      const ms = Math.min(7000, Math.max(1800, s.length * 100 + 900));
+      const ms = Math.min(9000, Math.max(2600, s.length * 130 + 1400));
       i += 1;
       captionTimer = setTimeout(tick, ms);
     };
