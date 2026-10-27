@@ -629,22 +629,25 @@ function clearCaptions() {
   }
   const bar = document.getElementById('caption-bar');
   const cur = document.getElementById('caption-current');
-  const next = document.getElementById('caption-next');
   if (bar) bar.hidden = true;
-  if (cur) cur.textContent = '';
-  if (next) next.textContent = '';
+  if (cur) {
+    cur.classList.remove('is-fading');
+    cur.textContent = '';
+  }
 }
 
 function showCaptionPair(sentences, index) {
   const bar = document.getElementById('caption-bar');
   const cur = document.getElementById('caption-current');
-  const next = document.getElementById('caption-next');
   if (!bar || !cur) return;
   bar.hidden = false;
-  cur.textContent = sentences[index] || '';
-  if (next) {
-    next.textContent = index + 1 < sentences.length ? sentences[index + 1] : '';
-  }
+  const text = sentences[index] || '';
+  // TV-style: fade out → swap line → fade in
+  cur.classList.add('is-fading');
+  window.setTimeout(() => {
+    cur.textContent = text;
+    cur.classList.remove('is-fading');
+  }, 180);
 }
 
 /** Advance captions on a reading-pace timer (ms per sentence ~ chars * 80 + 900). */
@@ -669,7 +672,7 @@ function runCaptions(script) {
       }
       showCaptionPair(sentences, i);
       const s = sentences[i];
-      const ms = Math.min(6500, Math.max(1600, s.length * 90 + 700));
+      const ms = Math.min(7000, Math.max(1800, s.length * 100 + 900));
       i += 1;
       captionTimer = setTimeout(tick, ms);
     };
