@@ -12,51 +12,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="mode-teach">
+<body class="mode-teach ui-minimal">
   <div id="app">
     <header>
       <h1><span class="logo" aria-hidden="true"></span><span class="title-text">魔方教室</span></h1>
-      <div class="header-right">
-        <label class="autoplay-toggle" title="換步驟時自動播粵語旁白同埋點扭示範">
-          <input type="checkbox" id="autoplay-voice" checked />
-          <span class="autoplay-label">自動教學</span>
-        </label>
-        <div class="mode-toggle" role="tablist" aria-label="模式">
-          <button type="button" id="btn-mode-teach" class="active" data-mode="teach">
-            <span class="mode-full">教學模式</span><span class="mode-short" aria-hidden="true">教學</span>
-          </button>
-          <button type="button" id="btn-mode-free" data-mode="free">
-            <span class="mode-full">自由練習</span><span class="mode-short" aria-hidden="true">自由</span>
-          </button>
-        </div>
-      </div>
     </header>
 
     <div id="stage">
       <div id="viewport" aria-label="立體魔方視圖"></div>
 
+      <div id="caption-bar" class="caption-bar" hidden aria-live="polite">
+        <p id="caption-current" class="caption-current"></p>
+        <p id="caption-next" class="caption-next"></p>
+      </div>
+
       <div id="controls" class="controls-bar listen-only" aria-label="操作區">
         <div class="listen-primary-row">
-          <button type="button" id="btn-play-all" class="primary play-all-btn">由頭聽教學</button>
+          <button type="button" id="btn-play-all" class="primary play-all-btn">由頭播教學</button>
           <button type="button" id="btn-stop-all" class="stop-all-btn" hidden>停止</button>
         </div>
         <div class="move-pad" id="move-pad" aria-label="轉面掣" hidden></div>
-        <div class="controls-secondary">
-          <div class="action-row compact-actions">
-            <button type="button" id="btn-scramble" title="快捷鍵 S">打亂<span class="kbd-hint"> <kbd>S</kbd></span></button>
-            <button type="button" id="btn-reset" class="restore-btn" title="一鍵還原到已還原狀態（Esc / 0）">一鍵還原<span class="kbd-hint"> <kbd>Esc</kbd></span></button>
-            <button type="button" id="btn-undo" title="快捷鍵 Z / Ctrl+Z" hidden>撤銷<span class="kbd-hint"> <kbd>Z</kbd></span></button>
-            <button type="button" id="btn-more" class="more-btn" aria-expanded="false" aria-controls="more-panel" title="更多設定">更多</button>
-          </div>
-          <div class="more-panel" id="more-panel" hidden>
-            <div class="speed-control">
-              <label for="speed">速度</label>
-              <input type="range" id="speed" min="0.4" max="2.5" step="0.1" value="1" />
-              <span id="speed-label">1.0×</span>
-            </div>
-            <label class="show-pad-toggle"><input type="checkbox" id="show-move-pad" /> 顯示手動轉面掣（自由練習）</label>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -64,7 +39,7 @@
       <div class="side-tabs" role="tablist">
         <button type="button" class="side-tab active" data-tab="teach" role="tab" aria-selected="true">教學</button>
         <button type="button" class="side-tab" data-tab="formulas" role="tab" aria-selected="false">公式</button>
-        <button type="button" class="side-tab" data-tab="keys" role="tab" aria-selected="false">快捷鍵</button>
+        <button type="button" class="side-tab secondary-tab" data-tab="keys" role="tab" aria-selected="false">快捷鍵</button>
       </div>
 
       <div class="sidebar-scroll">
@@ -73,51 +48,19 @@
             <h2>層先法教學 <span class="badge" id="step-badge">1 / 7</span></h2>
             <div class="step-title" id="step-title"></div>
             <div class="step-desc" id="step-desc"></div>
-            <div id="algo-list"></div>
-            <div class="voice-row">
-              <button type="button" id="btn-listen" class="listen-btn">播教學</button>
-              <button type="button" id="btn-stop-voice" class="stop-voice-btn" hidden>停止</button>
-              <span class="voice-status" id="voice-status"></span>
-            </div>
+            <div id="algo-list" class="algo-list-compact"></div>
             <div class="nav-row">
-              <button type="button" id="btn-prev" title="快捷鍵 [">上一步<span class="kbd-hint"> <kbd>[</kbd></span></button>
+              <button type="button" id="btn-prev" title="快捷鍵 [">上一步</button>
               <button type="button" id="btn-demo" class="demo">再播呢步</button>
-              <button type="button" id="btn-next" title="快捷鍵 ]">下一步<span class="kbd-hint"> <kbd>]</kbd></span></button>
+              <button type="button" id="btn-next" title="快捷鍵 ]">下一步</button>
             </div>
-          </section>
-
-          <section class="panel teach-only free-hide" id="checklist-panel">
-            <h2>進度清單</h2>
-            <ul class="checklist" id="checklist"></ul>
-          </section>
-
-          <section class="panel" id="notation-panel">
-            <h2>符號說明</h2>
-            <div class="notation-grid">
-              <div class="notation-item"><strong>R</strong> 右面順時針</div>
-              <div class="notation-item"><strong>L</strong> 左面順時針</div>
-              <div class="notation-item"><strong>U</strong> 上面順時針</div>
-              <div class="notation-item"><strong>D</strong> 下面順時針</div>
-              <div class="notation-item"><strong>F</strong> 前面順時針</div>
-              <div class="notation-item"><strong>B</strong> 後面順時針</div>
-              <div class="notation-item"><strong>'</strong> 逆時針（例如 R'）</div>
-              <div class="notation-item"><strong>2</strong> 轉兩下（例如 U2）</div>
-            </div>
-            <p class="hint desktop-only">用鍵盤更快扭面：撳字母就係順時針，<kbd>Shift</kbd>+字母就係逆時針，撳兩次同一個掣等同 2。</p>
-          </section>
-
-          <section class="panel" id="tips-panel">
-            <h2>小貼士</h2>
-            <p class="hint" style="margin-top:0">
-              拖曳魔方轉視角。中心塊顏色決定每面顏色——白色對黃色、紅色對橙色、藍色對綠色。保持白色喺上面、綠色喺前面最易跟教學。撳「由頭聽教學」就得——程式會自動旁白同示範點扭，唔使你親手扭。中間轉面掣已收起。
-            </p>
           </section>
         </div>
 
         <div class="tab-pane" id="tab-formulas" role="tabpanel">
           <section class="panel">
             <h2>常用公式一覽</h2>
-            <p class="hint" style="margin-top:0;margin-bottom:12px">初學者層先法最常用嘅公式。撳「示範」可以睇動畫；公式可以用嚟抄低練到熟。</p>
+            <p class="hint" style="margin-top:0;margin-bottom:12px">初學者層先法最常用嘅公式。撳「示範」可以睇動畫。</p>
             <div id="formula-catalog"></div>
           </section>
         </div>
@@ -125,7 +68,7 @@
         <div class="tab-pane" id="tab-keys" role="tabpanel">
           <section class="panel">
             <h2>鍵盤快捷鍵</h2>
-            <p class="hint" style="margin-top:0;margin-bottom:12px">熟咗符號之後，用鍵盤扭面會快好多——呢頁就係速查表。</p>
+            <p class="hint" style="margin-top:0;margin-bottom:12px">熟咗符號之後嘅速查表（可選）。</p>
             <div class="shortcut-section">
               <h3>轉面</h3>
               <div class="shortcut-grid" id="shortcut-moves"></div>
@@ -138,12 +81,30 @@
               <h3>教學導航</h3>
               <div class="shortcut-grid" id="shortcut-nav"></div>
             </div>
-            <p class="hint">輸入框入面打字時快捷鍵會暫停，避免誤觸。</p>
           </section>
         </div>
       </div>
-      <div class="status-bar" id="status">準備就緒 — 拖曳轉視角，撳掣或用鍵盤扭面</div>
+      <div class="status-bar" id="status">準備就緒 — 撳「由頭播教學」開始</div>
     </aside>
+  </div>
+
+  <!-- Hidden stubs so older binders stay safe if referenced -->
+  <div id="ui-stubs" hidden aria-hidden="true">
+    <input type="checkbox" id="autoplay-voice" />
+    <button type="button" id="btn-mode-teach" data-mode="teach"></button>
+    <button type="button" id="btn-mode-free" data-mode="free"></button>
+    <button type="button" id="btn-scramble"></button>
+    <button type="button" id="btn-reset"></button>
+    <button type="button" id="btn-undo"></button>
+    <button type="button" id="btn-more"></button>
+    <div id="more-panel"></div>
+    <input type="range" id="speed" min="0.4" max="2.5" step="0.1" value="1" />
+    <span id="speed-label"></span>
+    <input type="checkbox" id="show-move-pad" />
+    <button type="button" id="btn-listen"></button>
+    <button type="button" id="btn-stop-voice"></button>
+    <span id="voice-status"></span>
+    <ul id="checklist"></ul>
   </div>
 
   <script type="importmap">

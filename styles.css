@@ -798,7 +798,7 @@ kbd {
 
   #app {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--header-h) minmax(420px, 1fr) minmax(140px, 24dvh);
+    grid-template-rows: var(--header-h) minmax(300px, 1fr) minmax(180px, 32dvh);
     grid-template-areas:
       "header"
       "stage"
@@ -807,7 +807,7 @@ kbd {
 
   /* Controls overlay the cube so the 3D view can use full stage height */
   #stage { position: relative; }
-  #viewport { flex: 1 1 auto; min-height: 360px; }
+  #viewport { flex: 1 1 auto; min-height: 240px; }
   .controls-bar {
     position: absolute;
     left: 0;
@@ -946,7 +946,7 @@ kbd {
 /* Narrow phones (~390 and below) */
 @media (max-width: 430px) {
   #app {
-    grid-template-rows: var(--header-h) minmax(440px, 1fr) minmax(130px, 22dvh);
+    grid-template-rows: var(--header-h) minmax(300px, 1fr) minmax(180px, 32dvh);
   }
 
   .autoplay-label {
@@ -993,7 +993,7 @@ kbd {
 /* Tall portrait: balanced cube + sheet */
 @media (max-width: 900px) and (orientation: portrait) and (min-height: 740px) {
   #app {
-    grid-template-rows: var(--header-h) minmax(520px, 1fr) minmax(160px, 24dvh);
+    grid-template-rows: var(--header-h) minmax(340px, 1fr) minmax(200px, 34dvh);
   }
 }
 
@@ -1075,6 +1075,48 @@ kbd {
 body.listen-first .move-pad { display: none !important; }
 body.listen-first.mode-free .move-pad:not([hidden]) { display: grid !important; }
 @media (max-width: 900px) {
-  body.listen-first #viewport { min-height: 380px; }
+  body.listen-first #viewport { min-height: 260px; }
 }
+
+/* ===== Caption bar (sentence-by-sentence) ===== */
+.caption-bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  z-index: 8;
+  pointer-events: none;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(10, 12, 18, 0.82);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+.caption-current {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  font-weight: 600;
+  color: #f3f5fa;
+}
+.caption-next {
+  margin: 6px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgba(220, 226, 240, 0.45);
+}
+@media (max-width: 900px) {
+  .caption-bar {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    right: 8px;
+  }
+  .caption-current { font-size: 1.02rem; }
+}
+
+/* Minimal UI: hide secondary keys tab on phone */
+body.ui-minimal .secondary-tab { display: none; }
+body.ui-minimal header { justify-content: center; }
+body.ui-minimal .algo-list-compact .algo-actions { display: none; }
 

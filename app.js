@@ -30,7 +30,7 @@ const MOVE_LIST = [
 const STEPS = [
   {
     title: '明白顏色同中心塊',
-    desc: '魔方有六個中心塊，顏色永遠唔會變相對位置：白對黃、紅對橙、藍對綠。中心塊決定嗰面嘅顏色。記住：白色喺上面（U）、綠色喺前面（F）最易跟教學。跟住試下用鍵盤 R / U / F 扭幾下，感受下方向——用鍵盤會快過淨係撳掣。',
+    desc: '第一步：先認清楚六個中心塊。中心塊決定嗰一面嘅顏色，相對位置唔會變。記住：白色對黃色、紅色對橙色、藍色對綠色。跟教學時保持白色喺上面、綠色喺前面。睇清楚顏色之後，就可以開始砌白十字。',
     algos: [
       {
         name: '認識符號',
@@ -48,7 +48,7 @@ const STEPS = [
   },
   {
     title: '砌白十字',
-    desc: '將四條白色邊塊砌到白色中心周圍，形成十字；而且每條白邊嘅側面顏色要同中間層中心顏色對齊（例如白紅邊要對住紅中心）。唔使死記公式，多數用直覺扭——將白邊扭到下層再對準翻上嚟。',
+    desc: '第二步：將四條白色邊塊砌去白色中心周圍，形成十字。每條白邊嘅側面顏色都要同中間層中心對齊。做法：先搵一條白邊，扭到下面，對準側面顏色，再翻上去。四條都對齊，白十字就完成。',
     algos: [
       {
         name: '下層白邊翻上（白朝下）',
@@ -66,7 +66,7 @@ const STEPS = [
   },
   {
     title: '砌白面四個角（完成第一層）',
-    desc: '白十字砌好之後，將四個白角砌入正確位置。記住「白角喺右下前」嘅擺位，重覆性感公式直到白角落位。砌完第一層（白色面＋一圈側面）就可以轉去中間層。',
+    desc: '第三步：將白角擺喺右前上方，重覆性感公式 R U R\' U\'（通常 1～5 次）直到白角落位。左邊可用鏡像 L\' U\' L U。四個白角砌好，第一層就齊。',
     algos: [
       {
         name: '性感公式 Sexy Move',
@@ -84,7 +84,7 @@ const STEPS = [
   },
   {
     title: '砌中間層四條邊',
-    desc: '保持白色喺下面（或者你習慣嘅取向）。搵頂層冇黃色嘅邊塊，將佢側面顏色對準中心，跟住睇邊塊要去左邊定右邊，用對應公式插入中間層。',
+    desc: '第四步：搵頂層冇黃色嘅邊塊，先將側面顏色對準前面中心。要去右邊用 U R U\' R\' U\' F\' U F；要去左邊用對稱公式。插入後檢查中間層係咪齊色。',
     algos: [
       {
         name: '中間層插入（去右）',
@@ -102,7 +102,7 @@ const STEPS = [
   },
   {
     title: '砌黃十字',
-    desc: '而家淨係睇黃色面（頂層）。目標係將黃邊砌成十字（角可以暫時唔理）。根據頂層黃邊幾多條已經好：一點／一字／角標（L 形）／十字，用 F + 性感公式處理。',
+    desc: '第五步：淨係睇黃色頂面，角暫時唔理。公式係 F R U R\' U\' F\'。見到 L 形就放左上角做一次；如果係一字，先做一次變 L，再做一次變十字。',
     algos: [
       {
         name: "黃十字公式（F R U R' U' F'）",
@@ -115,7 +115,7 @@ const STEPS = [
   },
   {
     title: '砌黃面',
-    desc: '黃十字有咗之後，用 Sune 或者反 Sune 將黃角扭到全部朝上，砌成完整黃面。對準「有一隻黃角已經朝上」或者魚形再施法。',
+    desc: '第六步：用 Sune（R U R\' U R U2 R\'）砌完整黃面。見到魚形（淨一隻黃角朝上）就對準方位再做；另一方向用反 Sune。做到所有黃角朝上就得。',
     algos: [
       {
         name: 'Sune',
@@ -138,7 +138,7 @@ const STEPS = [
   },
   {
     title: '排好頂層角同邊（完成）',
-    desc: '黃面砌好之後，最後要排角同排邊。先用角交換公式將頂層四個角換成正確位置，再用邊三循環排好四條黃邊。搞掂就還原啦！記得將常用公式練熟，鍵盤快捷鍵可以幫你練到飛起。',
+    desc: '最後一步：先用角交換公式將四隻角換到啱位，再用 Ua 邊三循環排邊。角啱、邊啱，魔方就還原。可以再撳「由頭播教學」溫一次。',
     algos: [
       {
         name: '頂層角交換（新手）',
@@ -605,127 +605,91 @@ class RubiksCube {
 }
 
 
-/* ========== 粵語旁白（Fish Audio Drama 3 via /api/tts） ========== */
-const ttsBlobCache = new Map(); // cacheKey -> objectURL
-let currentAudio = null;
-let ttsLoading = false;
+/* ========== 教學字幕（無配音；逐句展示） ========== */
+let captionTimer = null;
+let captionAbort = false;
 
-function setVoiceStatus(msg) {
-  const el = document.getElementById('voice-status');
-  if (el) el.textContent = msg || '';
+function splitSentences(script) {
+  const raw = String(script || '').trim();
+  if (!raw) return [];
+  // Prefer 。！？； keep short fragments readable
+  const parts = raw
+    .split(/(?<=[。！？])\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length) return parts;
+  return [raw];
+}
+
+function clearCaptions() {
+  captionAbort = true;
+  if (captionTimer) {
+    clearTimeout(captionTimer);
+    captionTimer = null;
+  }
+  const bar = document.getElementById('caption-bar');
+  const cur = document.getElementById('caption-current');
+  const next = document.getElementById('caption-next');
+  if (bar) bar.hidden = true;
+  if (cur) cur.textContent = '';
+  if (next) next.textContent = '';
+}
+
+function showCaptionPair(sentences, index) {
+  const bar = document.getElementById('caption-bar');
+  const cur = document.getElementById('caption-current');
+  const next = document.getElementById('caption-next');
+  if (!bar || !cur) return;
+  bar.hidden = false;
+  cur.textContent = sentences[index] || '';
+  if (next) {
+    next.textContent = index + 1 < sentences.length ? sentences[index + 1] : '';
+  }
+}
+
+/** Advance captions on a reading-pace timer (ms per sentence ~ chars * 80 + 900). */
+function runCaptions(script) {
+  clearCaptions();
+  captionAbort = false;
+  const sentences = splitSentences(script);
+  if (!sentences.length) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let i = 0;
+    const tick = () => {
+      if (captionAbort || lessonAbort) {
+        clearCaptions();
+        resolve();
+        return;
+      }
+      if (i >= sentences.length) {
+        // keep last line briefly then clear on resolve for course flow
+        resolve();
+        return;
+      }
+      showCaptionPair(sentences, i);
+      const s = sentences[i];
+      const ms = Math.min(6500, Math.max(1600, s.length * 90 + 700));
+      i += 1;
+      captionTimer = setTimeout(tick, ms);
+    };
+    tick();
+  });
 }
 
 function stopVoice() {
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.removeAttribute('src');
-    currentAudio.load();
-    currentAudio = null;
-  }
-  ttsLoading = false;
+  // Legacy name: stop captions / any leftover UI
+  clearCaptions();
   const btn = document.getElementById('btn-listen');
   if (btn) {
     btn.classList.remove('playing');
     btn.disabled = false;
-    btn.textContent = '播教學';
+    btn.textContent = '再播呢步';
   }
   const stop = document.getElementById('btn-stop-voice');
   if (stop) stop.hidden = true;
-  setVoiceStatus('');
-}
-
-async function fetchTtsBlob(script, cacheKey) {
-  const key = cacheKey || script;
-  if (ttsBlobCache.has(key)) return ttsBlobCache.get(key);
-
-  const res = await fetch('/api/tts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: script, id: key }),
-  });
-
-  if (!res.ok) {
-    let detail = '';
-    try {
-      const j = await res.json();
-      detail = j.error || j.code || '';
-    } catch (_) {
-      detail = await res.text().catch(() => '');
-    }
-    const err = new Error(detail || ('TTS HTTP ' + res.status));
-    err.status = res.status;
-    throw err;
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  ttsBlobCache.set(key, url);
-  // soft cap
-  if (ttsBlobCache.size > 40) {
-    const first = ttsBlobCache.keys().next().value;
-    const old = ttsBlobCache.get(first);
-    ttsBlobCache.delete(first);
-    try { URL.revokeObjectURL(old); } catch (_) {}
-  }
-  return url;
-}
-
-async function playCommentary(script, cacheKey) {
-  if (!script || !String(script).trim()) {
-    setStatus('呢段冇旁白稿');
-    return;
-  }
-  stopVoice();
-  ttsLoading = true;
-  const btn = document.getElementById('btn-listen');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '產生緊…';
-  }
-  setVoiceStatus('呼叫粵語旁白中…');
-  setStatus('產生粵語旁白中…', true);
-
-  try {
-    const url = await fetchTtsBlob(script, cacheKey);
-    const audio = new Audio(url);
-    currentAudio = audio;
-    ttsLoading = false;
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '教學中…';
-      btn.classList.add('playing');
-    }
-    const stop = document.getElementById('btn-stop-voice');
-    if (stop) stop.hidden = false;
-    setVoiceStatus('播放緊粵語旁白');
-    setStatus('播放粵語旁白中');
-
-    await new Promise((resolve, reject) => {
-      audio.onended = () => resolve();
-      audio.onerror = () => reject(new Error('音訊播放失敗'));
-      audio.play().catch(reject);
-    });
-    setVoiceStatus('播放完成');
-    setStatus('旁白播放完成');
-  } catch (err) {
-    console.error(err);
-    const msg =
-      err.status === 503
-        ? '旁白未設定：請喺伺服器設定 FISH_AUDIO_API_KEY'
-        : '旁白失敗：' + (err.message || '未知錯誤');
-    setVoiceStatus(msg);
-    setStatus(msg);
-  } finally {
-    ttsLoading = false;
-    if (btn) {
-      btn.classList.remove('playing');
-      btn.disabled = false;
-      btn.textContent = '播教學';
-    }
-    const stop = document.getElementById('btn-stop-voice');
-    if (stop) stop.hidden = true;
-    currentAudio = null;
-  }
+  const vs = document.getElementById('voice-status');
+  if (vs) vs.textContent = '';
 }
 
 function currentStepScript() {
@@ -733,32 +697,28 @@ function currentStepScript() {
   return c ? c.script : STEPS[currentStep].desc;
 }
 
-function playCurrentStepVoice() {
-  const c = STEP_COMMENTARY[currentStep];
-  const id = c ? c.id : 'step-' + (currentStep + 1);
-  return playCommentary(currentStepScript(), id);
-}
-
-/** 旁白 + 點扭示範一齊播 */
+/** 字幕 + 點扭示範（無 TTS）；視角可繼續拖動 */
 async function playStepLesson() {
-  if (demoRunning || cube.busy()) {
-    setStatus('等而家嘅動作做完先', true);
-    return;
+  if (demoRunning || (cube && cube.busy() && !courseRunning)) {
+    // allow during course; otherwise wait
+    if (!courseRunning) {
+      setStatus('等而家嘅動作做完先', true);
+      return;
+    }
   }
 
   const step = STEPS[currentStep];
-  const voicePromise = playCurrentStepVoice();
+  const script = currentStepScript();
+  const captionPromise = runCaptions(script);
 
   demoRunning = true;
-  controls.enabled = false;
-  setStatus('播緊點扭示範：' + step.title, true);
+  // Keep OrbitControls enabled so user can orbit while faces turn
+  setStatus('播緊教學：' + step.title, true);
 
   try {
-    // 等旁白開始出聲／產生，再扭，避免一撳就靜靜哋先扭完
-    await new Promise((r) => setTimeout(r, 600));
-    if (!demoRunning) return; // 可能被一鍵還原取消
-
+    await new Promise((r) => setTimeout(r, 280));
     if (lessonAbort) return;
+
     cube.reset();
     if (step.demoSetup && step.demoSetup.length) {
       for (const tok of step.demoSetup) {
@@ -767,23 +727,21 @@ async function playStepLesson() {
       }
     }
     const moves = parseAlgorithm(step.demoMoves || '');
-    // 若呢步冇長示範，就播第一條公式，保證一定見到點扭
-    const fallback = (!moves.length && step.algos && step.algos[0])
-      ? parseAlgorithm(step.algos[0].moves)
-      : moves;
+    const fallback =
+      !moves.length && step.algos && step.algos[0]
+        ? parseAlgorithm(step.algos[0].moves)
+        : moves;
     for (const m of fallback) {
       if (!demoRunning || lessonAbort) return;
       await animateMovePromise(m, false);
     }
-    setStatus('點扭示範完成 — 旁白繼續可以聽');
+    setStatus('呢步示範完成');
   } finally {
-    controls.enabled = true;
     demoRunning = false;
   }
 
-  await voicePromise;
+  await captionPromise;
 }
-
 
 async function playFullCourse() {
   if (courseRunning || demoRunning || cube.busy()) {
@@ -800,7 +758,7 @@ async function playFullCourse() {
     playAll.textContent = '教學播放中…';
   }
   setMode('teach');
-  setStatus('開始由頭聽教學 — 唔使你親手扭', true);
+  setStatus('開始由頭播教學 — 下面會逐句顯示講解', true);
 
   try {
     for (let i = 0; i < STEPS.length; i++) {
@@ -809,16 +767,21 @@ async function playFullCourse() {
       renderStep();
       await playStepLesson();
       if (lessonAbort) break;
-      // short pause between steps
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 400));
     }
-    if (!lessonAbort) setStatus('成套教學播完 — 可以再撳「由頭聽教學」');
+    if (!lessonAbort) setStatus('成套教學播完 — 可以再撳「由頭播教學」');
   } finally {
     courseRunning = false;
     if (stopAll) stopAll.hidden = true;
     if (playAll) {
       playAll.disabled = false;
-      playAll.textContent = '由頭聽教學';
+      playAll.textContent = '由頭播教學';
+    }
+    if (!lessonAbort) {
+      // leave last caption briefly; clear after short delay
+      setTimeout(() => {
+        if (!courseRunning && !demoRunning) clearCaptions();
+      }, 1200);
     }
   }
 }
@@ -828,22 +791,20 @@ function stopFullCourse() {
   courseRunning = false;
   demoRunning = false;
   stopVoice();
+  clearCaptions();
   cube.reset();
   const stopAll = document.getElementById('btn-stop-all');
   const playAll = document.getElementById('btn-play-all');
   if (stopAll) stopAll.hidden = true;
   if (playAll) {
     playAll.disabled = false;
-    playAll.textContent = '由頭聽教學';
+    playAll.textContent = '由頭播教學';
   }
   setStatus('已停止教學');
 }
 
 function maybeAutoplayStepVoice() {
-  const box = document.getElementById('autoplay-voice');
-  if (box && box.checked && mode === 'teach') {
-    playStepLesson();
-  }
+  // Autoplay disabled (no TTS); manual play only
 }
 
 /* ========== App / UI ========== */
@@ -864,7 +825,7 @@ function initThree() {
   const h = viewport.clientHeight;
   camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 100);
   // Closer default framing so the cube reads larger on phones
-  camera.position.set(3.5, 2.9, 4.2);
+  camera.position.set(4.6, 3.7, 5.5);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -918,13 +879,13 @@ function fitCubeInView() {
   const narrow = w < 900;
   // Keep a comfortable framed distance; pull in more on portrait phones
   const portrait = h >= w;
-  let dist = narrow ? (portrait ? 5.0 : 6.0) : 7.2;
-  if (narrow && portrait && h < 700) dist = 4.6;
-  if (narrow && portrait && h >= 740) dist = 4.8;
+  let dist = narrow ? (portrait ? 6.2 : 7.0) : 8.0;
+  if (narrow && portrait && h < 700) dist = 5.8;
+  if (narrow && portrait && h >= 740) dist = 6.0;
   const dir = camera.position.clone().sub(controls.target).normalize();
   if (dir.lengthSq() < 1e-6) dir.set(0.55, 0.45, 0.7).normalize();
   camera.position.copy(controls.target).addScaledVector(dir, dist);
-  camera.fov = narrow ? 32 : 36;
+  camera.fov = narrow ? 38 : 40;
   camera.updateProjectionMatrix();
   controls.update();
 }
@@ -1157,7 +1118,6 @@ async function runAlgoDemo(movesStr, setup) {
   }
   demoRunning = true;
   setStatus('準備示範…', true);
-  controls.enabled = false;
 
   cube.reset();
   // Apply setup instantly (no animation) then animate the algo
@@ -1171,7 +1131,6 @@ async function runAlgoDemo(movesStr, setup) {
   for (const m of moves) {
     await animateMovePromise(m, false);
   }
-  controls.enabled = true;
   demoRunning = false;
   setStatus('示範完成 — 可以自己再試（或撳複製公式）');
 }
@@ -1190,7 +1149,6 @@ async function runStepDemo() {
   }
   const step = STEPS[currentStep];
   demoRunning = true;
-  controls.enabled = false;
   setStatus('示範呢步：' + step.title, true);
   cube.reset();
   if (step.demoSetup && step.demoSetup.length) {
@@ -1202,7 +1160,6 @@ async function runStepDemo() {
   for (const m of moves) {
     await animateMovePromise(m, false);
   }
-  controls.enabled = true;
   demoRunning = false;
   setStatus('呢步示範完成');
 }
@@ -1411,4 +1368,7 @@ function onKeyDown(e) {
 initThree();
 bindUI();
 setMode('teach');
-setStatus('準備就緒 — 拖曳轉視角，撳掣或用鍵盤扭面；打開「常用公式／快捷鍵」分頁溫習');
+document.body.classList.add('listen-first');
+// 一開頭 random 打亂
+cube.scramble(20);
+setStatus('已隨機打亂 — 撳「由頭播教學」開始（下面會逐句顯示文字）');
