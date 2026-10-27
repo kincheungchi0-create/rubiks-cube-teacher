@@ -1,0 +1,14 @@
+{
+  "name": "rubiks-cube-teacher",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Interactive Rubik's Cube teacher (zh-Hant-HK) with Cantonese TTS",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
