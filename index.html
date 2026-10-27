@@ -17,9 +17,9 @@
     <header>
       <h1><span class="logo" aria-hidden="true"></span><span class="title-text">魔方教室</span></h1>
       <div class="header-right">
-        <label class="autoplay-toggle" title="換步驟時自動播粵語旁白">
+        <label class="autoplay-toggle" title="換步驟時自動播粵語旁白同埋點扭示範">
           <input type="checkbox" id="autoplay-voice" />
-          <span class="autoplay-label">自動旁白</span>
+          <span class="autoplay-label">自動教學</span>
         </label>
         <div class="mode-toggle" role="tablist" aria-label="模式">
           <button type="button" id="btn-mode-teach" class="active" data-mode="teach">
@@ -70,13 +70,13 @@
             <div class="step-desc" id="step-desc"></div>
             <div id="algo-list"></div>
             <div class="voice-row">
-              <button type="button" id="btn-listen" class="listen-btn">聽旁白</button>
+              <button type="button" id="btn-listen" class="listen-btn">播教學</button>
               <button type="button" id="btn-stop-voice" class="stop-voice-btn" hidden>停止</button>
               <span class="voice-status" id="voice-status"></span>
             </div>
             <div class="nav-row">
               <button type="button" id="btn-prev" title="快捷鍵 [">上一步<span class="kbd-hint"> <kbd>[</kbd></span></button>
-              <button type="button" id="btn-demo" class="demo">示範呢步</button>
+              <button type="button" id="btn-demo" class="demo">播教學（旁白＋扭）</button>
               <button type="button" id="btn-next" title="快捷鍵 ]">下一步<span class="kbd-hint"> <kbd>]</kbd></span></button>
             </div>
           </section>
@@ -104,7 +104,7 @@
           <section class="panel" id="tips-panel">
             <h2>小貼士</h2>
             <p class="hint" style="margin-top:0">
-              拖曳魔方轉視角。中心塊顏色決定每面顏色——白色對黃色、紅色對橙色、藍色對綠色。保持白色喺上面、綠色喺前面最易跟教學。撳「聽旁白」可用粵語（Fish Audio Drama 3）聽講解；可開「自動旁白」。
+              拖曳魔方轉視角。中心塊顏色決定每面顏色——白色對黃色、紅色對橙色、藍色對綠色。保持白色喺上面、綠色喺前面最易跟教學。撳「播教學」會一邊用粵語講解、一邊示範點扭；可開「自動教學」。
             </p>
           </section>
         </div>

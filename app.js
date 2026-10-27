@@ -261,7 +261,7 @@ const SHORTCUTS = {
     { keys: ['1'], label: '切去「教學」分頁' },
     { keys: ['`'], label: '切去「常用公式」分頁' },
     { keys: ['3'], label: '切去「快捷鍵」分頁' },
-    { keys: ['V'], label: '聽／停止粵語旁白' },
+    { keys: ['V'], label: '播教學／停止（旁白＋點扭）' },
   ],
 };
 
@@ -627,7 +627,7 @@ function stopVoice() {
   if (btn) {
     btn.classList.remove('playing');
     btn.disabled = false;
-    btn.textContent = '聽旁白';
+    btn.textContent = '播教學';
   }
   const stop = document.getElementById('btn-stop-voice');
   if (stop) stop.hidden = true;
@@ -692,7 +692,7 @@ async function playCommentary(script, cacheKey) {
     ttsLoading = false;
     if (btn) {
       btn.disabled = false;
-      btn.textContent = '播放中…';
+      btn.textContent = '教學中…';
       btn.classList.add('playing');
     }
     const stop = document.getElementById('btn-stop-voice');
@@ -720,7 +720,7 @@ async function playCommentary(script, cacheKey) {
     if (btn) {
       btn.classList.remove('playing');
       btn.disabled = false;
-      btn.textContent = '聽旁白';
+      btn.textContent = '播教學';
     }
     const stop = document.getElementById('btn-stop-voice');
     if (stop) stop.hidden = true;
@@ -739,10 +739,54 @@ function playCurrentStepVoice() {
   return playCommentary(currentStepScript(), id);
 }
 
+/** 旁白 + 點扭示範一齊播 */
+async function playStepLesson() {
+  if (demoRunning || cube.busy()) {
+    setStatus('等而家嘅動作做完先', true);
+    return;
+  }
+
+  const step = STEPS[currentStep];
+  const voicePromise = playCurrentStepVoice();
+
+  demoRunning = true;
+  controls.enabled = false;
+  setStatus('播緊點扭示範：' + step.title, true);
+
+  try {
+    // 等旁白開始出聲／產生，再扭，避免一撳就靜靜哋先扭完
+    await new Promise((r) => setTimeout(r, 600));
+    if (!demoRunning) return; // 可能被一鍵還原取消
+
+    cube.reset();
+    if (step.demoSetup && step.demoSetup.length) {
+      for (const tok of step.demoSetup) {
+        if (!demoRunning) return;
+        await animateMovePromise(parseMove(tok), true);
+      }
+    }
+    const moves = parseAlgorithm(step.demoMoves || '');
+    // 若呢步冇長示範，就播第一條公式，保證一定見到點扭
+    const fallback = (!moves.length && step.algos && step.algos[0])
+      ? parseAlgorithm(step.algos[0].moves)
+      : moves;
+    for (const m of fallback) {
+      if (!demoRunning) return;
+      await animateMovePromise(m, false);
+    }
+    setStatus('點扭示範完成 — 旁白繼續可以聽');
+  } finally {
+    controls.enabled = true;
+    demoRunning = false;
+  }
+
+  await voicePromise;
+}
+
 function maybeAutoplayStepVoice() {
   const box = document.getElementById('autoplay-voice');
   if (box && box.checked && mode === 'teach') {
-    playCurrentStepVoice();
+    playStepLesson();
   }
 }
 
@@ -887,12 +931,13 @@ function renderStep() {
     demoBtn.addEventListener('click', () => runAlgoDemo(algo.moves, []));
     const listenBtn = document.createElement('button');
     listenBtn.type = 'button';
-    listenBtn.textContent = '聽講解';
+    listenBtn.textContent = '聽＋示範';
     const algoIdx = step.algos.indexOf(algo);
     listenBtn.addEventListener('click', () => {
       const script =
         '公式叫做' + algo.name + '。寫法係：' + algo.moves.replace(/'/g, '撇') + '。' + algo.explain;
       playCommentary(script, 'step-' + (currentStep + 1) + '-algo-' + algoIdx);
+      runAlgoDemo(algo.moves, []);
     });
     const copyBtn = document.createElement('button');
     copyBtn.type = 'button';
@@ -969,11 +1014,12 @@ function renderFormulaCatalog() {
     });
     const listen = document.createElement('button');
     listen.type = 'button';
-    listen.className = 'listen-mini';
-    listen.textContent = '聽講解';
+        listen.className = 'listen-mini';
+    listen.textContent = '聽＋示範';
     listen.addEventListener('click', () => {
       const script = FORMULA_COMMENTARY[f.id] || f.when;
       playCommentary(script, 'formula-' + f.id);
+      runAlgoDemo(f.moves, f.setup || []);
     });
     actions.appendChild(demo);
     actions.appendChild(listen);
@@ -1128,8 +1174,8 @@ function bindUI() {
       maybeAutoplayStepVoice();
     }
   });
-  document.getElementById('btn-demo').addEventListener('click', () => runStepDemo());
-  document.getElementById('btn-listen').addEventListener('click', () => playCurrentStepVoice());
+  document.getElementById('btn-demo').addEventListener('click', () => playStepLesson());
+  document.getElementById('btn-listen').addEventListener('click', () => playStepLesson());
   document.getElementById('btn-stop-voice').addEventListener('click', () => {
     stopVoice();
     setStatus('已停止旁白');
@@ -1139,7 +1185,7 @@ function bindUI() {
     autoplayBox.checked = localStorage.getItem('rubik-autoplay-voice') === '1';
     autoplayBox.addEventListener('change', () => {
       localStorage.setItem('rubik-autoplay-voice', autoplayBox.checked ? '1' : '0');
-      if (autoplayBox.checked) playCurrentStepVoice();
+      if (autoplayBox.checked) playStepLesson();
     });
   }
 
@@ -1266,11 +1312,13 @@ function onKeyDown(e) {
     return;
   }
   if ((key === 'v' || key === 'V') && !e.ctrlKey && !e.metaKey) {
-    if (currentAudio || ttsLoading) {
+    if (currentAudio || ttsLoading || demoRunning) {
+      demoRunning = false;
       stopVoice();
-      setStatus('已停止旁白');
+      cube.reset();
+      setStatus('已停止教學');
     } else {
-      playCurrentStepVoice();
+      playStepLesson();
     }
     e.preventDefault();
   }
