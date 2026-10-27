@@ -2,7 +2,10 @@
 <html lang="zh-Hant-HK">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1117" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>魔方教室 — 學扭魔方</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,44 +15,55 @@
 <body class="mode-teach">
   <div id="app">
     <header>
-      <h1><span class="logo" aria-hidden="true"></span>魔方教室</h1>
+      <h1><span class="logo" aria-hidden="true"></span><span class="title-text">魔方教室</span></h1>
       <div class="header-right">
         <label class="autoplay-toggle" title="換步驟時自動播粵語旁白">
           <input type="checkbox" id="autoplay-voice" />
-          <span>自動旁白</span>
+          <span class="autoplay-label">自動旁白</span>
         </label>
         <div class="mode-toggle" role="tablist" aria-label="模式">
-          <button type="button" id="btn-mode-teach" class="active" data-mode="teach">教學模式</button>
-          <button type="button" id="btn-mode-free" data-mode="free">自由練習</button>
+          <button type="button" id="btn-mode-teach" class="active" data-mode="teach">
+            <span class="mode-full">教學模式</span><span class="mode-short" aria-hidden="true">教學</span>
+          </button>
+          <button type="button" id="btn-mode-free" data-mode="free">
+            <span class="mode-full">自由練習</span><span class="mode-short" aria-hidden="true">自由</span>
+          </button>
         </div>
       </div>
     </header>
 
-    <div id="viewport" aria-label="立體魔方視圖">
-      <div class="hud">
+    <div id="stage">
+      <div id="viewport" aria-label="立體魔方視圖"></div>
+
+      <div id="controls" class="controls-bar" aria-label="操作區">
         <div class="move-pad" id="move-pad" aria-label="轉面掣"></div>
-        <div class="action-row">
-          <button type="button" id="btn-scramble" class="primary" title="快捷鍵 S">打亂 <kbd>S</kbd></button>
-          <button type="button" id="btn-reset" title="快捷鍵 Esc / 0">還原 <kbd>Esc</kbd></button>
-          <button type="button" id="btn-undo" title="快捷鍵 Z / Ctrl+Z">撤銷 <kbd>Z</kbd></button>
-        </div>
-        <div class="speed-control">
-          <label for="speed">速度</label>
-          <input type="range" id="speed" min="0.4" max="2.5" step="0.1" value="1" />
-          <span id="speed-label">1.0×</span>
+        <div class="controls-secondary">
+          <div class="action-row">
+            <button type="button" id="btn-scramble" class="primary" title="快捷鍵 S">打亂<span class="kbd-hint"> <kbd>S</kbd></span></button>
+            <button type="button" id="btn-reset" title="快捷鍵 Esc / 0">還原<span class="kbd-hint"> <kbd>Esc</kbd></span></button>
+            <button type="button" id="btn-undo" title="快捷鍵 Z / Ctrl+Z">撤銷<span class="kbd-hint"> <kbd>Z</kbd></span></button>
+            <button type="button" id="btn-more" class="more-btn" aria-expanded="false" aria-controls="more-panel" title="更多設定">更多</button>
+          </div>
+          <div class="more-panel" id="more-panel" hidden>
+            <div class="speed-control">
+              <label for="speed">速度</label>
+              <input type="range" id="speed" min="0.4" max="2.5" step="0.1" value="1" />
+              <span id="speed-label">1.0×</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <aside id="sidebar">
       <div class="side-tabs" role="tablist">
-        <button type="button" class="side-tab active" data-tab="teach" role="tab">教學</button>
-        <button type="button" class="side-tab" data-tab="formulas" role="tab">常用公式</button>
-        <button type="button" class="side-tab" data-tab="keys" role="tab">快捷鍵</button>
+        <button type="button" class="side-tab active" data-tab="teach" role="tab" aria-selected="true">教學</button>
+        <button type="button" class="side-tab" data-tab="formulas" role="tab" aria-selected="false">公式</button>
+        <button type="button" class="side-tab" data-tab="keys" role="tab" aria-selected="false">快捷鍵</button>
       </div>
 
       <div class="sidebar-scroll">
-        <div class="tab-pane active" id="tab-teach">
+        <div class="tab-pane active" id="tab-teach" role="tabpanel">
           <section class="panel teach-only" id="step-panel">
             <h2>層先法教學 <span class="badge" id="step-badge">1 / 7</span></h2>
             <div class="step-title" id="step-title"></div>
@@ -61,9 +75,9 @@
               <span class="voice-status" id="voice-status"></span>
             </div>
             <div class="nav-row">
-              <button type="button" id="btn-prev" title="快捷鍵 [">上一步 <kbd>[</kbd></button>
+              <button type="button" id="btn-prev" title="快捷鍵 [">上一步<span class="kbd-hint"> <kbd>[</kbd></span></button>
               <button type="button" id="btn-demo" class="demo">示範呢步</button>
-              <button type="button" id="btn-next" title="快捷鍵 ]">下一步 <kbd>]</kbd></button>
+              <button type="button" id="btn-next" title="快捷鍵 ]">下一步<span class="kbd-hint"> <kbd>]</kbd></span></button>
             </div>
           </section>
 
@@ -84,18 +98,18 @@
               <div class="notation-item"><strong>'</strong> 逆時針（例如 R'）</div>
               <div class="notation-item"><strong>2</strong> 轉兩下（例如 U2）</div>
             </div>
-            <p class="hint">用鍵盤更快扭面：撳字母就係順時針，<kbd>Shift</kbd>+字母就係逆時針，撳兩次同一個掣等同 2。</p>
+            <p class="hint desktop-only">用鍵盤更快扭面：撳字母就係順時針，<kbd>Shift</kbd>+字母就係逆時針，撳兩次同一個掣等同 2。</p>
           </section>
 
           <section class="panel" id="tips-panel">
             <h2>小貼士</h2>
             <p class="hint" style="margin-top:0">
-              拖曳畫面轉視角，滾輪縮放。中心塊顏色決定每面顏色——白色對黃色、紅色對橙色、藍色對綠色。保持白色喺上面、綠色喺前面最易跟教學。撳「聽旁白」可用粵語（Fish Audio Drama 3）聽講解；可開「自動旁白」。
+              拖曳魔方轉視角。中心塊顏色決定每面顏色——白色對黃色、紅色對橙色、藍色對綠色。保持白色喺上面、綠色喺前面最易跟教學。撳「聽旁白」可用粵語（Fish Audio Drama 3）聽講解；可開「自動旁白」。
             </p>
           </section>
         </div>
 
-        <div class="tab-pane" id="tab-formulas">
+        <div class="tab-pane" id="tab-formulas" role="tabpanel">
           <section class="panel">
             <h2>常用公式一覽</h2>
             <p class="hint" style="margin-top:0;margin-bottom:12px">初學者層先法最常用嘅公式。撳「示範」可以睇動畫；公式可以用嚟抄低練到熟。</p>
@@ -103,7 +117,7 @@
           </section>
         </div>
 
-        <div class="tab-pane" id="tab-keys">
+        <div class="tab-pane" id="tab-keys" role="tabpanel">
           <section class="panel">
             <h2>鍵盤快捷鍵</h2>
             <p class="hint" style="margin-top:0;margin-bottom:12px">熟咗符號之後，用鍵盤扭面會快好多——呢頁就係速查表。</p>

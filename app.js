@@ -775,6 +775,11 @@ function initThree() {
   controls.minDistance = 4;
   controls.maxDistance = 14;
   controls.target.set(0, 0, 0);
+  controls.enablePan = false;
+  controls.rotateSpeed = 0.85;
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  // Prevent browser scroll/zoom fighting cube orbit on phones
+  renderer.domElement.style.touchAction = 'none';
 
   const amb = new THREE.AmbientLight(0xffffff, 0.62);
   scene.add(amb);
@@ -788,16 +793,25 @@ function initThree() {
   cube = new RubiksCube(scene);
 
   window.addEventListener('resize', onResize);
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => onResize());
+    ro.observe(viewport);
+  }
+  // visualViewport helps iOS URL-bar show/hide
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onResize);
+  }
   animate();
 }
 
 function onResize() {
   const viewport = document.getElementById('viewport');
-  const w = viewport.clientWidth;
-  const h = viewport.clientHeight;
+  if (!viewport || !camera || !renderer) return;
+  const w = Math.max(1, viewport.clientWidth);
+  const h = Math.max(1, viewport.clientHeight);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
+  renderer.setSize(w, h, false);
 }
 
 function animate() {
@@ -981,11 +995,15 @@ function renderShortcuts() {
 
 function switchTab(name) {
   document.querySelectorAll('.side-tab').forEach((t) => {
-    t.classList.toggle('active', t.dataset.tab === name);
+    const on = t.dataset.tab === name;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   document.querySelectorAll('.tab-pane').forEach((p) => {
     p.classList.toggle('active', p.id === 'tab-' + name);
   });
+  const scroll = document.querySelector('.sidebar-scroll');
+  if (scroll) scroll.scrollTop = 0;
 }
 
 function setMode(next) {
@@ -1115,6 +1133,20 @@ function bindUI() {
     cube.speed = v;
     speedLabel.textContent = v.toFixed(1) + '×';
   });
+
+  const moreBtn = document.getElementById('btn-more');
+  const morePanel = document.getElementById('more-panel');
+  if (moreBtn && morePanel) {
+    moreBtn.addEventListener('click', () => {
+      const open = morePanel.hasAttribute('hidden');
+      if (open) morePanel.removeAttribute('hidden');
+      else morePanel.setAttribute('hidden', '');
+      moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      moreBtn.textContent = open ? '收起' : '更多';
+      // layout change may alter viewport size
+      requestAnimationFrame(onResize);
+    });
+  }
 
   window.addEventListener('keydown', onKeyDown);
 }
