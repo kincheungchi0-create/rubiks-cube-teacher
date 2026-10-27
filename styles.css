@@ -1120,3 +1120,24 @@ body.ui-minimal .secondary-tab { display: none; }
 body.ui-minimal header { justify-content: center; }
 body.ui-minimal .algo-list-compact .algo-actions { display: none; }
 
+/* No header */
+body.no-header header { display: none !important; }
+body.no-header #app {
+  grid-template-rows: 1fr;
+  grid-template-areas: "stage" "sidebar";
+}
+@media (max-width: 900px) {
+  body.no-header #app {
+    grid-template-rows: minmax(220px, 0.85fr) minmax(200px, 38dvh);
+    grid-template-areas:
+      "stage"
+      "sidebar";
+  }
+}
+@media (min-width: 901px) {
+  body.no-header #app {
+    grid-template-rows: 1fr;
+    grid-template-areas: "stage sidebar";
+  }
+}
+
