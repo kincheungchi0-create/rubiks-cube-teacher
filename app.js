@@ -521,8 +521,10 @@ class RubiksCube {
   _clearFaceOverlay() {
     if (this.highlightMesh) {
       this.group.remove(this.highlightMesh);
-      this.highlightMesh.geometry.dispose();
-      this.highlightMesh.material.dispose();
+      this.highlightMesh.traverse((object) => {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) object.material.dispose();
+      });
       this.highlightMesh = null;
     }
   }
@@ -724,30 +726,45 @@ class RubiksCube {
     }
   }
 
-  _highlightFace(face) {
+  _highlightFace(face, turns = 1) {
     this._clearFaceOverlay();
-    // A frame identifies the turning face without tinting its stickers.
     const { axis, dir } = FACE_AXES[face];
-    const points = [
-      new THREE.Vector3(-1.6, -1.6, 0),
-      new THREE.Vector3(1.6, -1.6, 0),
-      new THREE.Vector3(1.6, 1.6, 0),
-      new THREE.Vector3(-1.6, 1.6, 0),
+    const outward = new THREE.Vector3(axis === 'x' ? dir : 0, axis === 'y' ? dir : 0, axis === 'z' ? dir : 0);
+    const overlay = new THREE.Group();
+    // The local +Z axis points out of the face. Negative angles are clockwise
+    // when looking directly at it, matching the cube's turn convention.
+    overlay.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), outward);
+    overlay.position.copy(outward).multiplyScalar(1.64);
+    const corners = [
+      new THREE.Vector3(-1.59, -1.59, 0), new THREE.Vector3(1.59, -1.59, 0),
+      new THREE.Vector3(1.59, 1.59, 0), new THREE.Vector3(-1.59, 1.59, 0),
     ];
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({ color: 0x5bafff, depthTest: true });
-    const frame = new THREE.LineLoop(geometry, material);
-    if (axis === 'x') {
-      frame.rotation.y = Math.PI / 2;
-      frame.position.x = dir * 1.59;
-    } else if (axis === 'y') {
-      frame.rotation.x = -Math.PI / 2;
-      frame.position.y = dir * 1.59;
-    } else {
-      frame.position.z = dir * 1.59;
+    const frame = new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints(corners),
+      new THREE.LineBasicMaterial({ color: 0x8fe4ff })
+    );
+    overlay.add(frame);
+
+    const start = Math.PI * 0.75;
+    const sweep = turns === 2 ? -Math.PI : turns === -1 ? Math.PI / 2 : -Math.PI / 2;
+    const radius = 2.02;
+    const points = [];
+    for (let i = 0; i <= 32; i++) {
+      const angle = start + sweep * i / 32;
+      points.push(new THREE.Vector3(radius * Math.cos(angle), radius * Math.sin(angle), 0));
     }
-    this.group.add(frame);
-    this.highlightMesh = frame;
+    const curve = new THREE.CatmullRomCurve3(points);
+    const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xb2ecff });
+    overlay.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.035, 8, false), arrowMaterial));
+    const arrowhead = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 12), arrowMaterial.clone());
+    arrowhead.position.copy(points[points.length - 1]);
+    const end = start + sweep;
+    const direction = Math.sign(sweep);
+    const tangent = new THREE.Vector3(-Math.sin(end) * direction, Math.cos(end) * direction, 0);
+    arrowhead.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
+    overlay.add(arrowhead);
+    this.group.add(overlay);
+    this.highlightMesh = overlay;
   }
 
   enqueue(move, { record = true, silent = false, teaching = false } = {}) {
@@ -788,7 +805,7 @@ class RubiksCube {
   _animateMove(move, { record, silent, teaching }) {
     this.animating = true;
     if (!silent) setStatus('扭緊：' + move.notation, true);
-    this._highlightFace(move.face);
+    this._highlightFace(move.face, move.turns);
 
     const { axis, dir } = FACE_AXES[move.face];
     const cubies = this._cubiesOnFace(move.face);
@@ -1254,12 +1271,12 @@ async function startPlayback(index, continuous = false) {
           const how = document.createElement('strong');
           how.textContent = `第 ${j + 1} / ${moves.length} 步：${faceNames[move.face]}${direction}（${move.notation}）`;
           const rule = document.createElement('span');
-          rule.textContent = (i >= 2 ? '黃上、綠前。' : '白上、綠前。') + '正對要轉的面判斷方向；藍色外框標示轉動面，橘色箭頭指向目標方塊。';
+          rule.textContent = (i >= 2 ? '黃上、綠前。' : '白上、綠前。') + '正對要轉的面判斷方向；淺藍彎箭頭標示轉向；橘色箭頭指向目標方塊。';
           const why = document.createElement('span');
           why.textContent = '為什麼要依序轉？' + purposes[i][exampleIndex] + '請完成整組動作，再觀察變化。';
           videoMove.append(how, rule, why);
           const actualMove = mapMove(move);
-          cube._highlightFace(actualMove.face);
+          cube._highlightFace(actualMove.face, actualMove.turns);
           await new Promise((resolve) => setTimeout(resolve, 2000));
           if (generation !== playbackGeneration) break;
           await animateMovePromise(actualMove, true, true);
