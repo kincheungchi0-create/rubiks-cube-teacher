@@ -953,16 +953,17 @@ class RubiksCube {
 }
 
 
-/* ========== 粵語旁白（Fish Audio）＋電視字幕 ========== */
-const ttsBlobCache = new Map(); // cacheKey -> objectURL
-let currentAudio = null;
+/* ========== 教學旁白：電視字幕（voice/TTS 已關閉） ========== */
+/** Flip to true only if Fish Audio TTS should return; captions path is the default. */
+const VOICE_ENABLED = false;
+
+let currentAudio = null; // kept null while VOICE_ENABLED is false
 let ttsLoading = false;
 let captionTimer = null;
 let captionAbort = false;
 
-function setVoiceStatus(msg) {
-  const el = document.getElementById('voice-status');
-  if (el) el.textContent = msg || '';
+function setVoiceStatus(_msg) {
+  // Voice UI removed — no-op
 }
 
 function splitSentences(script) {
@@ -1005,7 +1006,7 @@ function showCaptionPair(sentences, index) {
   }, 160);
 }
 
-/** Reading-pace fallback when audio duration is unknown. */
+/** Reading-pace TV captions (no audio duration needed). */
 function runCaptions(script) {
   clearCaptions();
   captionAbort = false;
@@ -1034,66 +1035,8 @@ function runCaptions(script) {
   });
 }
 
-function waitAudioDuration(audio, timeoutMs = 2500) {
-  if (!audio) return Promise.resolve(NaN);
-  if (Number.isFinite(audio.duration) && audio.duration > 0) {
-    return Promise.resolve(audio.duration);
-  }
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      audio.removeEventListener('loadedmetadata', onMeta);
-      audio.removeEventListener('durationchange', onMeta);
-      resolve(Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : NaN);
-    };
-    const onMeta = () => {
-      if (Number.isFinite(audio.duration) && audio.duration > 0) finish();
-    };
-    audio.addEventListener('loadedmetadata', onMeta);
-    audio.addEventListener('durationchange', onMeta);
-    setTimeout(finish, timeoutMs);
-  });
-}
-
-/** Sync TV subtitles to audio duration (char-weighted); fall back to reading pace. */
-async function runCaptionsWithAudio(script, audio) {
-  clearCaptions();
-  captionAbort = false;
-  const sentences = splitSentences(script);
-  if (!sentences.length) return;
-
-  const duration = await waitAudioDuration(audio);
-  if (!(duration > 0) || !Number.isFinite(duration)) {
-    return runCaptions(script);
-  }
-
-  const weights = sentences.map((s) => Math.max(1, s.length));
-  const total = weights.reduce((a, b) => a + b, 0);
-
-  return new Promise((resolve) => {
-    let i = 0;
-    const tick = () => {
-      if (captionAbort || lessonAbort) {
-        clearCaptions();
-        resolve();
-        return;
-      }
-      if (i >= sentences.length) {
-        resolve();
-        return;
-      }
-      showCaptionPair(sentences, i);
-      const ms = Math.max(700, (weights[i] / total) * duration * 1000);
-      i += 1;
-      captionTimer = setTimeout(tick, ms);
-    };
-    tick();
-  });
-}
-
 function stopVoice() {
+  // Stop any leftover audio (should never run while VOICE_ENABLED is false)
   if (currentAudio) {
     try {
       currentAudio.pause();
@@ -1110,125 +1053,48 @@ function stopVoice() {
     btn.disabled = false;
     btn.textContent = '再播呢步';
   }
-  const stop = document.getElementById('btn-stop-voice');
-  if (stop) stop.hidden = true;
   setVoiceStatus('');
 }
 
-async function fetchTtsBlob(script, cacheKey) {
-  const key = cacheKey || script;
-  if (ttsBlobCache.has(key)) return ttsBlobCache.get(key);
-
-  const res = await fetch('/api/tts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: script, id: key }),
-  });
-
-  if (!res.ok) {
-    let detail = '';
-    try {
-      const j = await res.json();
-      detail = j.error || j.code || '';
-    } catch (_) {
-      detail = await res.text().catch(() => '');
-    }
-    const err = new Error(detail || ('TTS HTTP ' + res.status));
-    err.status = res.status;
-    throw err;
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  ttsBlobCache.set(key, url);
-  if (ttsBlobCache.size > 40) {
-    const first = ttsBlobCache.keys().next().value;
-    const old = ttsBlobCache.get(first);
-    ttsBlobCache.delete(first);
-    try { URL.revokeObjectURL(old); } catch (_) {}
-  }
-  return url;
-}
-
 /**
- * Play Cantonese commentary via Fish Audio.
+ * Show step commentary as TV captions.
+ * Voice/TTS is disabled (VOICE_ENABLED = false): never fetch /api/tts, never Audio().
  * @param {string} script
- * @param {string} cacheKey
+ * @param {string} _cacheKey unused while voice off
  * @param {{ captions?: boolean }} [opts] captions default true
  */
-async function playCommentary(script, cacheKey, opts = {}) {
+async function playCommentary(script, _cacheKey, opts = {}) {
   if (!script || !String(script).trim()) {
     setStatus('呢段冇旁白稿');
     return;
   }
   const withCaptions = opts.captions !== false;
   stopVoice();
-  ttsLoading = true;
-  const btn = document.getElementById('btn-listen');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '產生緊…';
-  }
-  setVoiceStatus('呼叫粵語旁白中…');
-  setStatus('產生粵語旁白中…', true);
 
-  let captionPromise = Promise.resolve();
-  try {
-    const url = await fetchTtsBlob(script, cacheKey);
-    if (lessonAbort && !courseRunning) {
-      ttsLoading = false;
-      return;
-    }
-    const audio = new Audio(url);
-    currentAudio = audio;
-    ttsLoading = false;
+  if (!VOICE_ENABLED) {
+    if (!withCaptions) return;
+    const btn = document.getElementById('btn-listen');
     if (btn) {
       btn.disabled = false;
       btn.textContent = '教學中…';
       btn.classList.add('playing');
     }
-    const stop = document.getElementById('btn-stop-voice');
-    if (stop) stop.hidden = false;
-    setVoiceStatus('播放緊粵語旁白');
-    setStatus('播放粵語旁白中', true);
-
-    if (withCaptions) {
-      captionPromise = runCaptionsWithAudio(script, audio);
+    setStatus('顯示字幕教學中…', true);
+    try {
+      await runCaptions(script);
+      if (!courseRunning && !lessonAbort) setStatus('呢步字幕播完');
+    } finally {
+      if (btn) {
+        btn.classList.remove('playing');
+        btn.disabled = false;
+        btn.textContent = '再播呢步';
+      }
     }
-
-    const playPromise = new Promise((resolve, reject) => {
-      audio.onended = () => resolve();
-      audio.onerror = () => reject(new Error('音訊播放失敗'));
-      const p = audio.play();
-      if (p && typeof p.catch === 'function') p.catch(reject);
-    });
-
-    await Promise.all([playPromise, captionPromise]);
-    setVoiceStatus('播放完成');
-    if (!courseRunning) setStatus('旁白播放完成');
-  } catch (err) {
-    console.error(err);
-    // Still show TV captions so teaching continues without audio
-    if (withCaptions) {
-      try { await runCaptions(script); } catch (_) {}
-    }
-    const msg =
-      err.status === 503
-        ? '旁白未設定：請喺伺服器設定 FISH_AUDIO_API_KEY'
-        : '旁白失敗：' + (err.message || '未知錯誤') + '（改顯示文字）';
-    setVoiceStatus(msg);
-    setStatus(msg);
-  } finally {
-    ttsLoading = false;
-    if (btn) {
-      btn.classList.remove('playing');
-      btn.disabled = false;
-      btn.textContent = '再播呢步';
-    }
-    const stop = document.getElementById('btn-stop-voice');
-    if (stop) stop.hidden = true;
-    if (currentAudio) currentAudio = null;
+    return;
   }
+
+  // Dead path while VOICE_ENABLED is false — kept only so flipping the flag is possible later.
+  setStatus('旁白已關閉（VOICE_ENABLED=false）');
 }
 
 function currentStepScript() {
@@ -1286,7 +1152,7 @@ function clearStepHighlights() {
   hideTargetBadge();
 }
 
-/** 對住而家畫面上嘅亂魔方：粵語旁白＋字幕＋標示要整邊粒（唔會 reset） */
+/** 對住而家畫面上嘅亂魔方：字幕＋標示要整邊粒（唔會 reset；無 voice） */
 async function playStepLesson() {
   if (demoRunning || (cube && cube.busy() && !courseRunning)) {
     if (!courseRunning) {
@@ -1320,7 +1186,7 @@ async function playStepLesson() {
         // re-assert targets after each move (cubies moved but same piece identities)
         applyStepHighlights(step);
       }
-      setStatus('示意轉面完成 — 旁白繼續（仲係你呢粒亂魔方）');
+      setStatus('示意轉面完成 — 字幕繼續（仲係你呢粒亂魔方）');
     }
   } finally {
     demoRunning = false;
@@ -1349,7 +1215,7 @@ async function playFullCourse() {
     playAll.textContent = '教學播放中…';
   }
   setMode('teach');
-  setStatus('開始由頭播教學 — 粵語旁白＋字幕', true);
+  setStatus('開始由頭播教學 — 字幕＋標示', true);
 
   try {
     await waitCubeIdle();
@@ -1374,7 +1240,7 @@ async function playFullCourse() {
     }
     if (!lessonAbort) {
       setTimeout(() => {
-        if (!courseRunning && !demoRunning && !currentAudio) clearCaptions();
+        if (!courseRunning && !demoRunning) clearCaptions();
       }, 1200);
     }
   }
@@ -1387,7 +1253,7 @@ function stopFullCourse() {
   stopVoice();
   clearCaptions();
   clearStepHighlights();
-  // 唔 reset：旁白要對準你而家見到嘅亂魔方
+  // 唔 reset：教學要對準你而家見到嘅亂魔方
   const stopAll = document.getElementById('btn-stop-all');
   const playAll = document.getElementById('btn-play-all');
   if (stopAll) stopAll.hidden = true;
@@ -1554,7 +1420,7 @@ function renderStep() {
     demoBtn.addEventListener('click', () => runAlgoDemo(algo.moves, []));
     const listenBtn = document.createElement('button');
     listenBtn.type = 'button';
-    listenBtn.textContent = '聽＋示範';
+    listenBtn.textContent = '字幕＋示範';
     const algoIdx = step.algos.indexOf(algo);
     listenBtn.addEventListener('click', () => {
       const script =
@@ -1638,7 +1504,7 @@ function renderFormulaCatalog() {
     const listen = document.createElement('button');
     listen.type = 'button';
         listen.className = 'listen-mini';
-    listen.textContent = '聽＋示範';
+    listen.textContent = '字幕＋示範';
     listen.addEventListener('click', () => {
       const script = FORMULA_COMMENTARY[f.id] || f.when;
       playCommentary(script, 'formula-' + f.id);
@@ -1783,17 +1649,12 @@ function bindUI() {
     }
   });
   document.getElementById('btn-demo').addEventListener('click', () => playStepLesson());
-  document.getElementById('btn-listen').addEventListener('click', () => playStepLesson());
+  const listenBtn = document.getElementById('btn-listen');
+  if (listenBtn) listenBtn.addEventListener('click', () => playStepLesson());
   const playAllBtn = document.getElementById('btn-play-all');
   if (playAllBtn) playAllBtn.addEventListener('click', () => playFullCourse());
   const stopAllBtn = document.getElementById('btn-stop-all');
   if (stopAllBtn) stopAllBtn.addEventListener('click', () => stopFullCourse());
-  const stopVoiceBtn = document.getElementById('btn-stop-voice');
-  if (stopVoiceBtn) {
-    stopVoiceBtn.addEventListener('click', () => {
-      lessonAbort = true;
-    });
-  }
   const showPad = document.getElementById('show-move-pad');
   const movePad = document.getElementById('move-pad');
   if (showPad && movePad) {
@@ -1803,21 +1664,6 @@ function bindUI() {
     });
   }
   document.body.classList.add('listen-first');
-  document.getElementById('btn-stop-voice').addEventListener('click', () => {
-    lessonAbort = true;
-    demoRunning = false;
-    stopVoice();
-    clearStepHighlights();
-    setStatus('已停止旁白');
-  });
-  const autoplayBox = document.getElementById('autoplay-voice');
-  if (autoplayBox) {
-    autoplayBox.checked = localStorage.getItem('rubik-autoplay-voice') === '1';
-    autoplayBox.addEventListener('change', () => {
-      localStorage.setItem('rubik-autoplay-voice', autoplayBox.checked ? '1' : '0');
-      if (autoplayBox.checked) playStepLesson();
-    });
-  }
 
   document.getElementById('btn-mode-teach').addEventListener('click', () => setMode('teach'));
   document.getElementById('btn-mode-free').addEventListener('click', () => setMode('free'));
@@ -1942,7 +1788,7 @@ function onKeyDown(e) {
     return;
   }
   if ((key === 'v' || key === 'V') && !e.ctrlKey && !e.metaKey) {
-    if (currentAudio || ttsLoading || demoRunning || courseRunning) {
+    if (demoRunning || courseRunning) {
       stopFullCourse();
     } else {
       playFullCourse();
@@ -1957,4 +1803,6 @@ setMode('teach');
 document.body.classList.add('listen-first');
 // 一開頭 random 打亂
 cube.scramble(20);
-setStatus('已隨機打亂 — 撳「由頭播教學」：對住呢粒亂魔方講解同標示');
+setStatus('已隨機打亂 — 撳「由頭播教學」：字幕＋標示（無 voice）');
+// Intro：淨字幕，唔播 TTS
+playCommentary(INTRO_COMMENTARY, 'intro', { captions: true });
