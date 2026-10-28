@@ -10,6 +10,14 @@ import { fileURLToPath } from 'node:url';
 import { synthesizeMp3 } from './lib/fishTts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Local secrets stay server-side and never override explicitly supplied variables.
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (match && process.env[match[1]] === undefined) process.env[match[1]] = match[2].trim();
+  }
+}
 const PORT = Number(process.argv[2] || process.env.PORT || 8765);
 
 const MIME = {
@@ -79,6 +87,10 @@ async function handleTts(req, res) {
 function serveStatic(req, res) {
   let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
   if (urlPath === '/') urlPath = '/index.html';
+  if (urlPath.split('/').some((part) => part.startsWith('.'))) {
+    res.writeHead(404).end();
+    return;
+  }
   const safe = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
   const filePath = path.join(__dirname, safe);
   if (!filePath.startsWith(__dirname)) {

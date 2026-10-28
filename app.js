@@ -860,7 +860,7 @@ class RubiksCube {
       axis === 'z' ? dir : 0
     );
 
-    const duration = (teaching ? (move.turns === 2 ? 1200 : 900) : (move.turns === 2 ? 400 : 300)) / this.speed;
+    const duration = (teaching ? (move.turns === 2 ? 2200 : 1700) : (move.turns === 2 ? 400 : 300)) / this.speed;
     const start = performance.now();
     const deltaQuat = new THREE.Quaternion().setFromAxisAngle(outward, targetAngle);
 
@@ -953,17 +953,18 @@ class RubiksCube {
 }
 
 
-/* ========== 教學旁白：電視字幕（voice/TTS 已關閉） ========== */
-/** Flip to true only if Fish Audio TTS should return; captions path is the default. */
-const VOICE_ENABLED = false;
-
-let currentAudio = null; // kept null while VOICE_ENABLED is false
-let ttsLoading = false;
+/* ========== 教學旁白與字幕 ========== */
+let currentAudio = null;
+let audioUrl = null;
+let audioResolve = null;
+let ttsController = null;
+let voiceGeneration = 0;
 let captionTimer = null;
 let captionAbort = false;
 
-function setVoiceStatus(_msg) {
-  // Voice UI removed — no-op
+function setVoiceStatus(msg) {
+  const status = document.getElementById('voice-status');
+  if (status) status.textContent = msg;
 }
 
 function splitSentences(script) {
@@ -1050,65 +1051,113 @@ function runCaptions(script) {
 }
 
 function stopVoice() {
-  // Stop any leftover audio (should never run while VOICE_ENABLED is false)
+  voiceGeneration++;
+  if (ttsController) ttsController.abort();
+  ttsController = null;
   if (currentAudio) {
-    try {
-      currentAudio.pause();
-      currentAudio.removeAttribute('src');
-      currentAudio.load();
-    } catch (_) {}
+    currentAudio.pause();
+    currentAudio.removeAttribute('src');
     currentAudio = null;
   }
-  ttsLoading = false;
-  clearCaptions();
-  const btn = document.getElementById('btn-listen');
-  if (btn) {
-    btn.classList.remove('playing');
-    btn.disabled = false;
-    btn.textContent = '再播呢步';
+  if (audioUrl) URL.revokeObjectURL(audioUrl);
+  audioUrl = null;
+  if (audioResolve) {
+    const resolve = audioResolve;
+    audioResolve = null;
+    resolve();
   }
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  clearCaptions();
   setVoiceStatus('');
 }
 
-/**
- * Show step commentary as TV captions.
- * Voice/TTS is disabled (VOICE_ENABLED = false): never fetch /api/tts, never Audio().
- * @param {string} script
- * @param {string} _cacheKey unused while voice off
- * @param {{ captions?: boolean }} [opts] captions default true
- */
-async function playCommentary(script, _cacheKey, opts = {}) {
-  if (!script || !String(script).trim()) {
-    setStatus('呢段冇旁白稿');
+async function playCantoneseVoice(script, generation) {
+  const controller = new AbortController();
+  ttsController = controller;
+  setVoiceStatus('正在準備粵語旁白…');
+  try {
+    const response = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: script }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error('TTS unavailable');
+    const blob = await response.blob();
+    if (generation !== voiceGeneration) return;
+    audioUrl = URL.createObjectURL(blob);
+    const audio = new Audio(audioUrl);
+    currentAudio = audio;
+    await new Promise((resolve, reject) => {
+      audioResolve = resolve;
+      audio.onended = resolve;
+      audio.onerror = () => reject(new Error('Audio playback failed'));
+      audio.play().then(() => { if (generation === voiceGeneration) setVoiceStatus('粵語旁白播放中'); }).catch(reject);
+    });
+    if (generation === voiceGeneration) setVoiceStatus('粵語旁白已播放');
+    return;
+  } catch (error) {
+    if (generation !== voiceGeneration || error.name === 'AbortError') return;
+  } finally {
+    if (generation === voiceGeneration) {
+      ttsController = null;
+      audioResolve = null;
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      audioUrl = null;
+      currentAudio = null;
+    }
+  }
+
+  if (!('speechSynthesis' in window)) {
+    setVoiceStatus('粵語旁白無法使用，請設定 Fish Audio');
     return;
   }
-  const withCaptions = opts.captions !== false;
-  stopVoice();
-
-  if (!VOICE_ENABLED) {
-    if (!withCaptions) return;
-    const btn = document.getElementById('btn-listen');
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '教學中…';
-      btn.classList.add('playing');
-    }
-    setStatus('顯示字幕教學中…', true);
-    try {
-      await runCaptions(script);
-      if (!courseRunning && !lessonAbort) setStatus('呢步字幕播完');
-    } finally {
-      if (btn) {
-        btn.classList.remove('playing');
-        btn.disabled = false;
-        btn.textContent = '再播呢步';
+  const synth = window.speechSynthesis;
+  let voices = synth.getVoices();
+  if (!voices.length) {
+    await new Promise((resolve) => {
+      let timer;
+      const ready = () => { clearTimeout(timer); synth.removeEventListener('voiceschanged', ready); resolve(); };
+      synth.addEventListener('voiceschanged', ready);
+      timer = setTimeout(ready, 1500);
+    });
+    voices = synth.getVoices();
+  }
+  if (generation !== voiceGeneration) return;
+  const voice = voices.find((v) => /^yue([_-]|$)/i.test(v.lang) || /cantonese|粵語|粤语/i.test(v.name)) ||
+    voices.find((v) => /^zh[-_]HK$/i.test(v.lang));
+  if (!voice) {
+    setVoiceStatus('找不到粵語語音，請設定 Fish Audio 或安裝裝置粵語語音');
+    return;
+  }
+  await new Promise((resolve) => {
+    const utterance = new SpeechSynthesisUtterance(script);
+    utterance.voice = voice;
+    utterance.lang = voice.lang;
+    audioResolve = resolve;
+    const startTimer = setTimeout(() => {
+      if (generation === voiceGeneration) {
+        setVoiceStatus('裝置語音無法開始，請檢查瀏覽器語音設定或設定 Fish Audio');
+        synth.cancel();
       }
-    }
-    return;
-  }
+      resolve();
+    }, 8000);
+    utterance.onend = () => { clearTimeout(startTimer); resolve(); };
+    utterance.onstart = () => { clearTimeout(startTimer); if (generation === voiceGeneration) setVoiceStatus('裝置粵語旁白播放中'); };
+    utterance.onerror = () => { clearTimeout(startTimer); if (generation === voiceGeneration) setVoiceStatus('粵語旁白播放失敗'); resolve(); };
+    setVoiceStatus('準備裝置粵語語音…');
+    synth.speak(utterance);
+  });
+  if (generation === voiceGeneration) audioResolve = null;
+}
 
-  // Dead path while VOICE_ENABLED is false — kept only so flipping the flag is possible later.
-  setStatus('旁白已關閉（VOICE_ENABLED=false）');
+async function playCommentary(script, _cacheKey, opts = {}) {
+  if (!script || !String(script).trim()) return;
+  stopVoice();
+  const generation = voiceGeneration;
+  const captions = opts.captions !== false ? runCaptions(script) : Promise.resolve();
+  const voice = opts.voice === false ? Promise.resolve() : playCantoneseVoice(script, generation);
+  await Promise.all([captions, voice]);
 }
 
 function currentStepScript() {
@@ -1255,14 +1304,14 @@ async function startPlayback(index, continuous = false) {
           const rule = document.createElement('span');
           rule.textContent = (i >= 2 ? '黃上、綠前。' : '白上、綠前。') + '正對要轉的面判斷方向；藍色標示轉動面，橘光標示目標方塊。';
           const why = document.createElement('span');
-          why.textContent = '這組動作的目的：' + purposes[i][exampleIndex];
+          why.textContent = '為什麼要依序轉？' + purposes[i][exampleIndex] + '請完成整組動作，再觀察變化。';
           videoMove.append(how, rule, why);
           const actualMove = mapMove(move);
           cube._highlightFace(actualMove.face);
-          await new Promise((resolve) => setTimeout(resolve, 1100));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           if (generation !== playbackGeneration) break;
           await animateMovePromise(actualMove, true, true);
-          await new Promise((resolve) => setTimeout(resolve, 700));
+          await new Promise((resolve) => setTimeout(resolve, 1100));
         }
       }
       if (generation === playbackGeneration) videoMove.hidden = true;
@@ -1385,6 +1434,7 @@ function fitCubeInView() {
   if (narrow && portrait && h >= 740) dist = 8.6;
   // The horizontal field of view narrows on a phone; keep all three faces visible.
   if (narrow && portrait) dist = Math.max(dist, 6.5 / (w / h));
+  if (narrow && !portrait && window.matchMedia('(orientation: portrait)').matches) dist = 6.8;
   const dir = camera.position.clone().sub(controls.target).normalize();
   if (dir.lengthSq() < 1e-6) dir.set(0.55, 0.45, 0.7).normalize();
   camera.position.copy(controls.target).addScaledVector(dir, dist);
@@ -1886,6 +1936,6 @@ setMode('teach');
 document.body.classList.add('listen-first');
 // 一開頭 random 打亂
 cube.scramble(20);
-setStatus('已隨機打亂 — 撳「由頭播教學」：字幕＋標示（無 voice）');
-// Intro：淨字幕，唔播 TTS
-playCommentary(INTRO_COMMENTARY, 'intro', { captions: true });
+setStatus('已隨機打亂 — 撳「由頭播教學」：字幕、標示與粵語旁白');
+// 頁面載入時先顯示字幕，按下播放後才開始語音。
+playCommentary(INTRO_COMMENTARY, 'intro', { captions: true, voice: false });
