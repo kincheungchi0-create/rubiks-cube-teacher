@@ -977,8 +977,17 @@ function splitSentences(script) {
   return [raw];
 }
 
+let captionResolve = null;
+let captionGeneration = 0;
+
 function clearCaptions() {
   captionAbort = true;
+  captionGeneration++;
+  if (captionResolve) {
+    const resolve = captionResolve;
+    captionResolve = null;
+    resolve();
+  }
   if (captionTimer) {
     clearTimeout(captionTimer);
     captionTimer = null;
@@ -998,9 +1007,10 @@ function showCaptionPair(sentences, index) {
   if (!bar || !cur) return;
   bar.hidden = false;
   const text = sentences[index] || '';
+  const generation = captionGeneration;
   cur.classList.add('is-fading');
   window.setTimeout(() => {
-    if (captionAbort) return;
+    if (captionAbort || generation !== captionGeneration) return;
     cur.textContent = text;
     cur.classList.remove('is-fading');
   }, 160);
@@ -1014,14 +1024,18 @@ function runCaptions(script) {
   if (!sentences.length) return Promise.resolve();
 
   return new Promise((resolve) => {
+    captionResolve = resolve;
+    const generation = captionGeneration;
     let i = 0;
     const tick = () => {
+      if (generation !== captionGeneration) return;
       if (captionAbort || lessonAbort) {
         clearCaptions();
         resolve();
         return;
       }
       if (i >= sentences.length) {
+        captionResolve = null;
         resolve();
         return;
       }
@@ -1152,116 +1166,81 @@ function clearStepHighlights() {
   hideTargetBadge();
 }
 
-/** 對住而家畫面上嘅亂魔方：字幕＋標示要整邊粒（唔會 reset；無 voice） */
-async function playStepLesson() {
-  if (demoRunning || (cube && cube.busy() && !courseRunning)) {
-    if (!courseRunning) {
-      setStatus('等而家嘅動作做完先', true);
-      return;
-    }
-  }
+/** 播放單一階段，或從第一階段連續播放。 */
+let playbackGeneration = 0;
 
-  await waitCubeIdle();
-  if (lessonAbort) return;
-
-  const step = STEPS[currentStep];
-  demoRunning = true;
-  setStatus('播緊教學：' + step.title + '（對住而家呢粒亂魔方）', true);
-
-  // Mark pieces on the *current* scramble — do not reset
-  applyStepHighlights(step);
-
-  const voicePromise = playCurrentStepVoice();
-
-  try {
-    await new Promise((r) => setTimeout(r, 320));
-    if (lessonAbort) return;
-
-    // Optional: short live demo on the same scramble (notation only etc.)
-    const live = parseAlgorithm(step.liveDemoMoves || '');
-    if (live.length) {
-      for (const m of live) {
-        if (!demoRunning || lessonAbort) break;
-        await animateMovePromise(m, false);
-        // re-assert targets after each move (cubies moved but same piece identities)
-        applyStepHighlights(step);
-      }
-      setStatus('示意轉面完成 — 字幕繼續（仲係你呢粒亂魔方）');
-    }
-  } finally {
-    demoRunning = false;
-  }
-
-  await voicePromise;
-  if (!courseRunning) {
-    // keep marks briefly so user can still look, then clear
-    await new Promise((r) => setTimeout(r, 900));
-    if (!courseRunning && !demoRunning) clearStepHighlights();
+function updatePlaybackControls(playing) {
+  const stop = document.getElementById('btn-stop-all');
+  const play = document.getElementById('btn-play-all');
+  if (stop) stop.hidden = !playing;
+  if (play) {
+    play.disabled = playing;
+    play.textContent = playing ? '教學播放中…' : '由頭播教學';
   }
 }
 
-async function playFullCourse() {
-  if (courseRunning || demoRunning || (cube && cube.busy())) {
-    setStatus('等而家嘅教學做完先，或者撳停止', true);
-    return;
-  }
+async function startPlayback(index, continuous = false) {
+  const generation = ++playbackGeneration;
+  lessonAbort = true;
+  stopVoice();
+  clearStepHighlights();
   courseRunning = true;
-  lessonAbort = false;
-  const stopAll = document.getElementById('btn-stop-all');
-  const playAll = document.getElementById('btn-play-all');
-  if (stopAll) stopAll.hidden = false;
-  if (playAll) {
-    playAll.disabled = true;
-    playAll.textContent = '教學播放中…';
-  }
-  setMode('teach');
-  setStatus('開始由頭播教學 — 字幕＋標示', true);
+  updatePlaybackControls(true);
+  currentStep = index;
+  renderStep();
+  setStatus('準備播放第 ' + (index + 1) + ' 階段…', true);
 
+  // 讓正在進行的轉動完成，再切換段落，避免破壞魔方狀態。
+  await waitCubeIdle();
+  if (generation !== playbackGeneration) return;
+  lessonAbort = false;
   try {
-    await waitCubeIdle();
-    if (lessonAbort) return;
-    for (let i = 0; i < STEPS.length; i++) {
-      if (lessonAbort) break;
+    const end = continuous ? STEPS.length : index + 1;
+    for (let i = index; i < end; i++) {
+      if (generation !== playbackGeneration) return;
       currentStep = i;
       renderStep();
-      await playStepLesson();
-      if (lessonAbort) break;
+      const step = STEPS[i];
+      applyStepHighlights(step);
+      setStatus('播放第 ' + (i + 1) + ' 階段：' + step.title, true);
+      const captions = playCurrentStepVoice();
+      for (const move of parseAlgorithm(step.liveDemoMoves || '')) {
+        if (generation !== playbackGeneration) break;
+        await animateMovePromise(move, false);
+        if (generation === playbackGeneration) applyStepHighlights(step);
+      }
+      await captions;
+      if (generation !== playbackGeneration) return;
       clearStepHighlights();
-      await new Promise((r) => setTimeout(r, 450));
     }
-    if (!lessonAbort) setStatus('成套教學播完 — 可以再撳「由頭播教學」溫習呢粒亂魔方');
+    setStatus(continuous ? '所有階段播放完畢' : '本階段播放完畢，選擇其他階段繼續');
   } finally {
-    courseRunning = false;
-    clearStepHighlights();
-    if (stopAll) stopAll.hidden = true;
-    if (playAll) {
-      playAll.disabled = false;
-      playAll.textContent = '由頭播教學';
-    }
-    if (!lessonAbort) {
-      setTimeout(() => {
-        if (!courseRunning && !demoRunning) clearCaptions();
-      }, 1200);
+    if (generation === playbackGeneration) {
+      courseRunning = false;
+      updatePlaybackControls(false);
+      clearStepHighlights();
     }
   }
+}
+
+function playStepLesson() {
+  return startPlayback(currentStep);
+}
+
+function playFullCourse() {
+  setMode('teach');
+  return startPlayback(0, true);
 }
 
 function stopFullCourse() {
+  playbackGeneration++;
   lessonAbort = true;
   courseRunning = false;
-  demoRunning = false;
   stopVoice();
-  clearCaptions();
   clearStepHighlights();
-  // 唔 reset：教學要對準你而家見到嘅亂魔方
-  const stopAll = document.getElementById('btn-stop-all');
-  const playAll = document.getElementById('btn-play-all');
-  if (stopAll) stopAll.hidden = true;
-  if (playAll) {
-    playAll.disabled = false;
-    playAll.textContent = '由頭播教學';
-  }
-  setStatus('已停止教學 — 魔方保持而家狀態');
+  updatePlaybackControls(false);
+  lessonAbort = false;
+  setStatus('已停止教學，魔方保持目前狀態');
 }
 
 function maybeAutoplayStepVoice() {
@@ -1464,6 +1443,10 @@ function renderStep() {
     listenBtn.textContent = '字幕＋示範';
     const algoIdx = step.algos.indexOf(algo);
     listenBtn.addEventListener('click', () => {
+      if (courseRunning || demoRunning || cube.busy()) {
+        setStatus('請先停止或等目前教學完成');
+        return;
+      }
       const script =
         '公式叫做' + algo.name + '。寫法係：' + algo.moves.replace(/'/g, '撇') + '。' + algo.explain;
       playCommentary(script, 'step-' + (currentStep + 1) + '-algo-' + algoIdx);
@@ -1502,10 +1485,7 @@ function renderChecklist() {
     li.querySelector('.num').textContent = String(i + 1);
     li.querySelector('.txt').textContent = s.title;
     li.querySelector('button').addEventListener('click', () => {
-      currentStep = i;
-      renderStep();
-      document.querySelector('.stage-picker').open = false;
-      maybeAutoplayStepVoice();
+      startPlayback(i);
     });
     ul.appendChild(li);
   });
@@ -1548,6 +1528,10 @@ function renderFormulaCatalog() {
         listen.className = 'listen-mini';
     listen.textContent = '字幕＋示範';
     listen.addEventListener('click', () => {
+      if (courseRunning || demoRunning || cube.busy()) {
+        setStatus('請先停止或等目前教學完成');
+        return;
+      }
       const script = FORMULA_COMMENTARY[f.id] || f.when;
       playCommentary(script, 'formula-' + f.id);
       runAlgoDemo(f.moves, f.setup || []);
@@ -1623,7 +1607,7 @@ function setMode(next) {
 }
 
 async function runAlgoDemo(movesStr, setup) {
-  if (demoRunning || cube.busy()) {
+  if (demoRunning || courseRunning || cube.busy()) {
     setStatus('等而家嘅動作做完先', true);
     return;
   }
@@ -1678,16 +1662,12 @@ function bindUI() {
 
   document.getElementById('btn-prev').addEventListener('click', () => {
     if (currentStep > 0) {
-      currentStep--;
-      renderStep();
-      maybeAutoplayStepVoice();
+      startPlayback(currentStep - 1);
     }
   });
   document.getElementById('btn-next').addEventListener('click', () => {
     if (currentStep < STEPS.length - 1) {
-      currentStep++;
-      renderStep();
-      maybeAutoplayStepVoice();
+      startPlayback(currentStep + 1);
     }
   });
   document.getElementById('btn-demo').addEventListener('click', () => playStepLesson());
@@ -1802,18 +1782,14 @@ function onKeyDown(e) {
   }
   if (key === '[') {
     if (currentStep > 0) {
-      currentStep--;
-      renderStep();
-      maybeAutoplayStepVoice();
+      startPlayback(currentStep - 1);
     }
     e.preventDefault();
     return;
   }
   if (key === ']') {
     if (currentStep < STEPS.length - 1) {
-      currentStep++;
-      renderStep();
-      maybeAutoplayStepVoice();
+      startPlayback(currentStep + 1);
     }
     e.preventDefault();
     return;
