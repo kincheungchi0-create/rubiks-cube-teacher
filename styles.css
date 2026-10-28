@@ -1376,3 +1376,40 @@ body.no-header .listen-primary-row .stop-all-btn { background: #303748; }
 .video-move strong { color: #fff; font-size: 1rem; }
 .video-move span { color: #c9d8f5; font-size: .8rem; font-weight: 400; }
 @media (max-width: 900px) { .video-move:not([hidden]) { max-width: min(320px, calc(100% - 28px)); } .video-move strong { font-size: .84rem; } .video-move span { font-size: .73rem; } }
+
+/* On phones the cube is the main view; stages form a compact horizontal strip. */
+@media (max-width: 900px) {
+  body.no-header #app {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 168px);
+  }
+  body.listen-first #viewport { min-height: 0; }
+  #sidebar { border-radius: 12px 12px 0 0; }
+  #sidebar::before { display: none; }
+  .sidebar-scroll { padding: 8px 10px max(8px, var(--safe-bottom)); }
+  #step-panel { padding: 8px; }
+  #step-panel h2 { margin-bottom: 2px; font-size: .85rem; }
+  .stage-picker { margin: 0; }
+  .stage-picker summary { padding: 2px 0; font-size: .75rem; }
+  .checklist { flex-direction: row; gap: 6px; overflow-x: auto; margin: 3px 0 0; padding: 0 0 4px; overscroll-behavior-x: contain; }
+  .checklist li { flex: 0 0 auto; min-height: 40px; max-width: 205px; border: 1px solid var(--border); }
+  .checklist li button { min-height: 40px; padding: 5px 8px; font-size: .75rem; }
+  .checklist li .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .checklist li .num { width: 22px; height: 22px; }
+  .nav-row { display: flex; gap: 6px; margin-top: 4px; }
+  .nav-row button { min-height: 38px; padding: 5px 6px; font-size: .75rem; }
+  .controls-bar { left: 10px; right: auto; bottom: 8px; width: auto; max-width: calc(100% - 20px); padding: 5px; background: rgba(15,17,23,.75); border-radius: 10px; }
+  .listen-primary-row { margin: 0; gap: 5px; }
+  body.no-header .listen-primary-row button { flex: none; min-height: 38px; padding: 5px 10px; font-size: .75rem; border-radius: 7px; }
+  .cinema-status { display: none; }
+  .caption-bar { bottom: 58px; }
+}
+@media (max-width: 900px) and (max-height: 560px) {
+  body.no-header #app { grid-template-rows: minmax(0, 1fr) minmax(0, 145px); }
+}
+@media (max-width: 900px) {
+  .checklist { scrollbar-width: none; }
+  .checklist::-webkit-scrollbar { display: none; }
+  .sidebar-scroll { scrollbar-width: thin; }
+  #step-panel { border: 0; padding: 4px 6px; }
+  .nav-row button { min-height: 36px; }
+}

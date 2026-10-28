@@ -1383,6 +1383,8 @@ function fitCubeInView() {
   let dist = narrow ? (portrait ? 8.8 : 9.5) : 10.5;
   if (narrow && portrait && h < 700) dist = 8.4;
   if (narrow && portrait && h >= 740) dist = 8.6;
+  // The horizontal field of view narrows on a phone; keep all three faces visible.
+  if (narrow && portrait) dist = Math.max(dist, 6.5 / (w / h));
   const dir = camera.position.clone().sub(controls.target).normalize();
   if (dir.lengthSq() < 1e-6) dir.set(0.55, 0.45, 0.7).normalize();
   camera.position.copy(controls.target).addScaledVector(dir, dist);
@@ -1548,6 +1550,10 @@ function renderChecklist() {
     });
     ul.appendChild(li);
   });
+  if (window.matchMedia('(max-width: 900px)').matches) {
+    const selected = ul.querySelector('.current');
+    if (selected) ul.scrollLeft = selected.offsetLeft - ul.offsetLeft - (ul.clientWidth - selected.offsetWidth) / 2;
+  }
 }
 
 function renderFormulaCatalog() {
