@@ -1163,3 +1163,151 @@ body.no-header #app {
   }
 }
 
+/* Full-screen cube: no bottom teaching/formula window */
+body.no-sidebar #sidebar { display: none !important; }
+body.no-sidebar #app {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: 1fr !important;
+  grid-template-areas: "stage" !important;
+  height: 100dvh;
+}
+body.no-sidebar #stage { min-height: 100dvh; }
+body.no-sidebar #viewport { min-height: 100dvh !important; }
+body.no-sidebar .controls-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, rgba(10,12,18,0.75));
+  border: none;
+}
+body.no-sidebar .caption-bar {
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+body.no-sidebar .cinema-status {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 2px 8px 0;
+  min-height: auto;
+}
+body.no-sidebar .listen-primary-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  max-width: 420px;
+  margin: 0 auto 6px;
+}
+body.no-sidebar .play-all-btn {
+  flex: 1;
+  min-height: 48px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+}
+body.no-sidebar .stop-all-btn {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #2a2030;
+  color: #ffb4b4;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+
+/* ===== Cinema: fullscreen cube + captions + play/stop only ===== */
+body.cinema #sidebar {
+  display: none !important;
+}
+body.cinema.no-header #app,
+body.cinema #app {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  grid-template-areas: "stage";
+}
+body.cinema #stage {
+  grid-area: stage;
+  min-height: 0;
+  height: 100%;
+}
+body.cinema #viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+body.cinema .controls-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-top: none;
+  background: linear-gradient(180deg, rgba(15,17,23,0) 0%, rgba(15,17,23,0.45) 35%, rgba(15,17,23,0.88) 100%);
+  padding: 10px 14px max(12px, var(--safe-bottom));
+  z-index: 10;
+}
+body.cinema .listen-primary-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  max-width: 420px;
+  margin: 0 auto 6px;
+}
+body.cinema .play-all-btn {
+  flex: 1;
+  min-height: 48px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+}
+body.cinema .play-all-btn:hover { background: var(--accent-hover); }
+body.cinema .play-all-btn:disabled { opacity: 0.7; cursor: default; }
+body.cinema .stop-all-btn {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #2a2030;
+  color: #ffb4b4;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+body.cinema .cinema-status {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 2px 8px 0;
+  min-height: auto;
+}
+body.cinema .caption-bar.tv-subs,
+body.cinema .caption-bar {
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 900px) {
+  body.cinema.no-header #app,
+  body.cinema #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    grid-template-areas: "stage";
+  }
+  body.cinema .caption-bar {
+    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  }
+}

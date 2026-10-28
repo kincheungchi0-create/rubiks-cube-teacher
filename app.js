@@ -605,14 +605,21 @@ class RubiksCube {
 }
 
 
-/* ========== 教學字幕（無配音；逐句展示） ========== */
+/* ========== 粵語旁白（Fish Audio）＋電視字幕 ========== */
+const ttsBlobCache = new Map(); // cacheKey -> objectURL
+let currentAudio = null;
+let ttsLoading = false;
 let captionTimer = null;
 let captionAbort = false;
+
+function setVoiceStatus(msg) {
+  const el = document.getElementById('voice-status');
+  if (el) el.textContent = msg || '';
+}
 
 function splitSentences(script) {
   const raw = String(script || '').trim();
   if (!raw) return [];
-  // Prefer 。！？； keep short fragments readable
   const parts = raw
     .split(/(?<=[。！？])\s*/)
     .map((s) => s.trim())
@@ -642,15 +649,15 @@ function showCaptionPair(sentences, index) {
   if (!bar || !cur) return;
   bar.hidden = false;
   const text = sentences[index] || '';
-  // TV-style: fade out → swap line → fade in
   cur.classList.add('is-fading');
   window.setTimeout(() => {
+    if (captionAbort) return;
     cur.textContent = text;
     cur.classList.remove('is-fading');
-  }, 180);
+  }, 160);
 }
 
-/** Advance captions on a reading-pace timer (ms per sentence ~ chars * 80 + 900). */
+/** Reading-pace fallback when audio duration is unknown. */
 function runCaptions(script) {
   clearCaptions();
   captionAbort = false;
@@ -666,7 +673,6 @@ function runCaptions(script) {
         return;
       }
       if (i >= sentences.length) {
-        // keep last line briefly then clear on resolve for course flow
         resolve();
         return;
       }
@@ -680,8 +686,75 @@ function runCaptions(script) {
   });
 }
 
+function waitAudioDuration(audio, timeoutMs = 2500) {
+  if (!audio) return Promise.resolve(NaN);
+  if (Number.isFinite(audio.duration) && audio.duration > 0) {
+    return Promise.resolve(audio.duration);
+  }
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      audio.removeEventListener('loadedmetadata', onMeta);
+      audio.removeEventListener('durationchange', onMeta);
+      resolve(Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : NaN);
+    };
+    const onMeta = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) finish();
+    };
+    audio.addEventListener('loadedmetadata', onMeta);
+    audio.addEventListener('durationchange', onMeta);
+    setTimeout(finish, timeoutMs);
+  });
+}
+
+/** Sync TV subtitles to audio duration (char-weighted); fall back to reading pace. */
+async function runCaptionsWithAudio(script, audio) {
+  clearCaptions();
+  captionAbort = false;
+  const sentences = splitSentences(script);
+  if (!sentences.length) return;
+
+  const duration = await waitAudioDuration(audio);
+  if (!(duration > 0) || !Number.isFinite(duration)) {
+    return runCaptions(script);
+  }
+
+  const weights = sentences.map((s) => Math.max(1, s.length));
+  const total = weights.reduce((a, b) => a + b, 0);
+
+  return new Promise((resolve) => {
+    let i = 0;
+    const tick = () => {
+      if (captionAbort || lessonAbort) {
+        clearCaptions();
+        resolve();
+        return;
+      }
+      if (i >= sentences.length) {
+        resolve();
+        return;
+      }
+      showCaptionPair(sentences, i);
+      const ms = Math.max(700, (weights[i] / total) * duration * 1000);
+      i += 1;
+      captionTimer = setTimeout(tick, ms);
+    };
+    tick();
+  });
+}
+
 function stopVoice() {
-  // Legacy name: stop captions / any leftover UI
+  if (currentAudio) {
+    try {
+      currentAudio.pause();
+      currentAudio.removeAttribute('src');
+      currentAudio.load();
+    } catch (_) {}
+    currentAudio = null;
+  }
+  ttsLoading = false;
   clearCaptions();
   const btn = document.getElementById('btn-listen');
   if (btn) {
@@ -691,8 +764,123 @@ function stopVoice() {
   }
   const stop = document.getElementById('btn-stop-voice');
   if (stop) stop.hidden = true;
-  const vs = document.getElementById('voice-status');
-  if (vs) vs.textContent = '';
+  setVoiceStatus('');
+}
+
+async function fetchTtsBlob(script, cacheKey) {
+  const key = cacheKey || script;
+  if (ttsBlobCache.has(key)) return ttsBlobCache.get(key);
+
+  const res = await fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: script, id: key }),
+  });
+
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const j = await res.json();
+      detail = j.error || j.code || '';
+    } catch (_) {
+      detail = await res.text().catch(() => '');
+    }
+    const err = new Error(detail || ('TTS HTTP ' + res.status));
+    err.status = res.status;
+    throw err;
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  ttsBlobCache.set(key, url);
+  if (ttsBlobCache.size > 40) {
+    const first = ttsBlobCache.keys().next().value;
+    const old = ttsBlobCache.get(first);
+    ttsBlobCache.delete(first);
+    try { URL.revokeObjectURL(old); } catch (_) {}
+  }
+  return url;
+}
+
+/**
+ * Play Cantonese commentary via Fish Audio.
+ * @param {string} script
+ * @param {string} cacheKey
+ * @param {{ captions?: boolean }} [opts] captions default true
+ */
+async function playCommentary(script, cacheKey, opts = {}) {
+  if (!script || !String(script).trim()) {
+    setStatus('呢段冇旁白稿');
+    return;
+  }
+  const withCaptions = opts.captions !== false;
+  stopVoice();
+  ttsLoading = true;
+  const btn = document.getElementById('btn-listen');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '產生緊…';
+  }
+  setVoiceStatus('呼叫粵語旁白中…');
+  setStatus('產生粵語旁白中…', true);
+
+  let captionPromise = Promise.resolve();
+  try {
+    const url = await fetchTtsBlob(script, cacheKey);
+    if (lessonAbort && !courseRunning) {
+      ttsLoading = false;
+      return;
+    }
+    const audio = new Audio(url);
+    currentAudio = audio;
+    ttsLoading = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '教學中…';
+      btn.classList.add('playing');
+    }
+    const stop = document.getElementById('btn-stop-voice');
+    if (stop) stop.hidden = false;
+    setVoiceStatus('播放緊粵語旁白');
+    setStatus('播放粵語旁白中', true);
+
+    if (withCaptions) {
+      captionPromise = runCaptionsWithAudio(script, audio);
+    }
+
+    const playPromise = new Promise((resolve, reject) => {
+      audio.onended = () => resolve();
+      audio.onerror = () => reject(new Error('音訊播放失敗'));
+      const p = audio.play();
+      if (p && typeof p.catch === 'function') p.catch(reject);
+    });
+
+    await Promise.all([playPromise, captionPromise]);
+    setVoiceStatus('播放完成');
+    if (!courseRunning) setStatus('旁白播放完成');
+  } catch (err) {
+    console.error(err);
+    // Still show TV captions so teaching continues without audio
+    if (withCaptions) {
+      try { await runCaptions(script); } catch (_) {}
+    }
+    const msg =
+      err.status === 503
+        ? '旁白未設定：請喺伺服器設定 FISH_AUDIO_API_KEY'
+        : '旁白失敗：' + (err.message || '未知錯誤') + '（改顯示文字）';
+    setVoiceStatus(msg);
+    setStatus(msg);
+  } finally {
+    ttsLoading = false;
+    if (btn) {
+      btn.classList.remove('playing');
+      btn.disabled = false;
+      btn.textContent = '再播呢步';
+    }
+    const stop = document.getElementById('btn-stop-voice');
+    if (stop) stop.hidden = true;
+    if (currentAudio) currentAudio = null;
+  }
 }
 
 function currentStepScript() {
@@ -700,10 +888,15 @@ function currentStepScript() {
   return c ? c.script : STEPS[currentStep].desc;
 }
 
-/** 字幕 + 點扭示範（無 TTS）；視角可繼續拖動 */
+function playCurrentStepVoice() {
+  const c = STEP_COMMENTARY[currentStep];
+  const id = c ? c.id : 'step-' + (currentStep + 1);
+  return playCommentary(currentStepScript(), id, { captions: true });
+}
+
+/** 粵語旁白＋電視字幕＋點扭示範（視角可繼續拖動） */
 async function playStepLesson() {
   if (demoRunning || (cube && cube.busy() && !courseRunning)) {
-    // allow during course; otherwise wait
     if (!courseRunning) {
       setStatus('等而家嘅動作做完先', true);
       return;
@@ -711,8 +904,7 @@ async function playStepLesson() {
   }
 
   const step = STEPS[currentStep];
-  const script = currentStepScript();
-  const captionPromise = runCaptions(script);
+  const voicePromise = playCurrentStepVoice();
 
   demoRunning = true;
   // Keep OrbitControls enabled so user can orbit while faces turn
@@ -738,16 +930,16 @@ async function playStepLesson() {
       if (!demoRunning || lessonAbort) return;
       await animateMovePromise(m, false);
     }
-    setStatus('呢步示範完成');
+    setStatus('呢步示範完成 — 旁白繼續');
   } finally {
     demoRunning = false;
   }
 
-  await captionPromise;
+  await voicePromise;
 }
 
 async function playFullCourse() {
-  if (courseRunning || demoRunning || cube.busy()) {
+  if (courseRunning || demoRunning || (cube && cube.busy())) {
     setStatus('等而家嘅教學做完先，或者撳停止', true);
     return;
   }
@@ -761,7 +953,7 @@ async function playFullCourse() {
     playAll.textContent = '教學播放中…';
   }
   setMode('teach');
-  setStatus('開始由頭播教學 — 下面會逐句顯示講解', true);
+  setStatus('開始由頭播教學 — 粵語旁白＋字幕', true);
 
   try {
     for (let i = 0; i < STEPS.length; i++) {
@@ -781,9 +973,8 @@ async function playFullCourse() {
       playAll.textContent = '由頭播教學';
     }
     if (!lessonAbort) {
-      // leave last caption briefly; clear after short delay
       setTimeout(() => {
-        if (!courseRunning && !demoRunning) clearCaptions();
+        if (!courseRunning && !demoRunning && !currentAudio) clearCaptions();
       }, 1200);
     }
   }
@@ -795,7 +986,7 @@ function stopFullCourse() {
   demoRunning = false;
   stopVoice();
   clearCaptions();
-  cube.reset();
+  if (cube) cube.reset();
   const stopAll = document.getElementById('btn-stop-all');
   const playAll = document.getElementById('btn-play-all');
   if (stopAll) stopAll.hidden = true;
@@ -807,7 +998,7 @@ function stopFullCourse() {
 }
 
 function maybeAutoplayStepVoice() {
-  // Autoplay disabled (no TTS); manual play only
+  // Manual play only (browser autoplay policies)
 }
 
 /* ========== App / UI ========== */
@@ -1221,6 +1412,8 @@ function bindUI() {
   }
   document.body.classList.add('listen-first');
   document.getElementById('btn-stop-voice').addEventListener('click', () => {
+    lessonAbort = true;
+    demoRunning = false;
     stopVoice();
     setStatus('已停止旁白');
   });
@@ -1356,13 +1549,10 @@ function onKeyDown(e) {
     return;
   }
   if ((key === 'v' || key === 'V') && !e.ctrlKey && !e.metaKey) {
-    if (currentAudio || ttsLoading || demoRunning) {
-      demoRunning = false;
-      stopVoice();
-      cube.reset();
-      setStatus('已停止教學');
+    if (currentAudio || ttsLoading || demoRunning || courseRunning) {
+      stopFullCourse();
     } else {
-      playStepLesson();
+      playFullCourse();
     }
     e.preventDefault();
   }
@@ -1374,4 +1564,4 @@ setMode('teach');
 document.body.classList.add('listen-first');
 // 一開頭 random 打亂
 cube.scramble(20);
-setStatus('已隨機打亂 — 撳「由頭播教學」開始（下面會逐句顯示文字）');
+setStatus('已隨機打亂 — 撳「由頭播教學」開始（粵語旁白＋字幕）');

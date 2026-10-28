@@ -59,4 +59,4 @@ export const FORMULA_COMMENTARY = {
 };
 
 export const INTRO_COMMENTARY =
-  '歡迎嚟到魔方教室。撳「由頭播教學」，下面會逐句顯示點整，魔方會跟住示範。唔使你親手扭。';
+  '歡迎嚟到魔方教室。撳「由頭播教學」，會有粵語旁白同電視字幕講點整，魔方會跟住示範。唔使你親手扭。';

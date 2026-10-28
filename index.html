@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="mode-teach ui-minimal no-header">
+<body class="mode-teach ui-minimal no-header no-sidebar cinema">
   <div id="app">
     <div id="stage">
       <div id="viewport" aria-label="立體魔方視圖"></div>
@@ -26,11 +26,12 @@
           <button type="button" id="btn-play-all" class="primary play-all-btn">由頭播教學</button>
           <button type="button" id="btn-stop-all" class="stop-all-btn" hidden>停止</button>
         </div>
+        <div class="status-bar cinema-status" id="status">準備就緒 — 撳「由頭播教學」開始</div>
         <div class="move-pad" id="move-pad" aria-label="轉面掣" hidden></div>
       </div>
     </div>
 
-    <aside id="sidebar">
+    <aside id="sidebar" hidden aria-hidden="true">
       <div class="side-tabs" role="tablist">
         <button type="button" class="side-tab active" data-tab="teach" role="tab" aria-selected="true">教學</button>
         <button type="button" class="side-tab" data-tab="formulas" role="tab" aria-selected="false">公式</button>
@@ -79,7 +80,7 @@
           </section>
         </div>
       </div>
-      <div class="status-bar" id="status">準備就緒 — 撳「由頭播教學」開始</div>
+      <!-- status moved to stage controls -->
     </aside>
   </div>
 
