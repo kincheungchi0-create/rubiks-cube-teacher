@@ -361,7 +361,9 @@ class RubiksCube {
     this.highlightMesh = null;
     this.targetCubies = [];
     this.targetLabelSprites = [];
+    this.targetArrows = [];
     this.targetGlowColor = 0xffcc66;
+    this.targetGlowColorKey = null;
     this.targetPulse = 0;
     this.keepTargetsDuringMove = false;
     this.onIdle = null;
@@ -402,6 +404,7 @@ class RubiksCube {
               metalness: 0.04,
               emissive: 0x000000,
               emissiveIntensity: 0,
+              side: THREE.DoubleSide,
             });
             const sticker = new THREE.Mesh(geo, mat);
             const off = size / 2 + stickerT / 2 + 0.001;
@@ -542,22 +545,46 @@ class RubiksCube {
 
   _applyTargetGlow(intensity) {
     const glow = this.targetGlowColor;
+    const colorKey = this.targetGlowColorKey;
     for (const c of this.targetCubies) {
       if (!c || !c.parent) continue;
+      const stickers = [];
       c.traverse((obj) => {
         if (obj.userData && obj.userData.isSticker && obj.material && obj.material.emissive) {
-          obj.material.emissive.setHex(glow);
-          obj.material.emissiveIntensity = intensity;
+          stickers.push(obj);
         }
       });
+      if (!stickers.length) continue;
+
+      if (colorKey) {
+        // Only warm-glow the taught color sticker so other faces stay true (red≠orange wash)
+        for (const obj of stickers) {
+          if (obj.userData.faceKey === colorKey) {
+            obj.material.emissive.setHex(glow);
+            obj.material.emissiveIntensity = intensity * 0.5;
+          } else {
+            obj.material.emissive.setHex(0x000000);
+            obj.material.emissiveIntensity = 0;
+          }
+        }
+      } else {
+        // Centers / multi-color: subtle self-color emissive so hues stay readable
+        for (const obj of stickers) {
+          const own = obj.userData.colorHex != null ? obj.userData.colorHex : 0xffffff;
+          obj.material.emissive.setHex(own);
+          obj.material.emissiveIntensity = intensity * 0.2;
+        }
+      }
     }
   }
 
   clearTargets() {
     this._removeTargetLabels();
+    this._removeTargetArrows();
     this.targetCubies = [];
     this.targetPulse = 0;
     this.keepTargetsDuringMove = false;
+    this.targetGlowColorKey = null;
     // only clear emissive if no face overlay active mid-move — safe full clear of sticker glow
     this._clearAllEmissive();
   }
@@ -571,6 +598,17 @@ class RubiksCube {
       }
     }
     this.targetLabelSprites = [];
+  }
+
+  _removeTargetArrows() {
+    for (const a of this.targetArrows) {
+      if (a.parent) a.parent.remove(a);
+      a.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+      });
+    }
+    this.targetArrows = [];
   }
 
   _makeLabelSprite(text, colorHex) {
@@ -605,10 +643,44 @@ class RubiksCube {
     return sprite;
   }
 
+  /** Orange/gold 3D arrow (cone tip + thin shaft). Default local +Y = tip direction. */
+  _makeTargetArrow() {
+    const g = new THREE.Group();
+    g.userData.isTargetArrow = true;
+    const shaftMat = new THREE.MeshBasicMaterial({
+      color: 0xff9a2e,
+      transparent: true,
+      opacity: 0.95,
+      depthTest: true,
+      depthWrite: false,
+    });
+    const tipMat = new THREE.MeshBasicMaterial({
+      color: 0xffd36a,
+      transparent: true,
+      opacity: 1,
+      depthTest: true,
+      depthWrite: false,
+    });
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.28, 8), shaftMat);
+    shaft.position.y = -0.14;
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.095, 0.2, 12), tipMat);
+    tip.position.y = 0.1;
+    g.add(shaft);
+    g.add(tip);
+    g.scale.setScalar(0.48);
+    g.renderOrder = 12;
+    // Don't participate in any future picking; OrbitControls uses pointer drag on canvas anyway
+    g.traverse((o) => {
+      o.raycast = () => {};
+    });
+    return g;
+  }
+
   highlightTargets(cubies, opts = {}) {
     this.clearTargets();
     this.targetCubies = (cubies || []).slice();
     this.targetGlowColor = opts.glowColor != null ? opts.glowColor : 0xffcc66;
+    this.targetGlowColorKey = opts.colorKey || null;
     this.keepTargetsDuringMove = true;
     this._showLabels = !!opts.labels;
     this._applyTargetGlow(0.7);
@@ -624,18 +696,52 @@ class RubiksCube {
         this.group.add(sprite);
         this.targetLabelSprites.push(sprite);
       }
-      this._updateLabelPositions();
     }
+
+    // Arrows for every highlight type (centers, edges, corners, equator, last-layer)
+    for (const c of this.targetCubies) {
+      const arrow = this._makeTargetArrow();
+      arrow.userData.followCubie = c;
+      this.group.add(arrow);
+      this.targetArrows.push(arrow);
+    }
+    this._updateTargetIndicators();
   }
 
-  _updateLabelPositions() {
+  /** World-accurate follow so indicators stay correct while a face is mid-pivot. */
+  _cubieLocalPos(cubie, out = new THREE.Vector3()) {
+    cubie.updateMatrixWorld(true);
+    cubie.getWorldPosition(out);
+    this.group.worldToLocal(out);
+    return out;
+  }
+
+  _updateTargetIndicators() {
+    const tmp = new THREE.Vector3();
+    const yAxis = new THREE.Vector3(0, 1, 0);
+    const inward = new THREE.Vector3();
+
     for (const sprite of this.targetLabelSprites) {
       const c = sprite.userData.followCubie;
       if (!c || !c.parent) continue;
-      const outward = c.position.clone();
+      this._cubieLocalPos(c, tmp);
+      const outward = tmp.clone();
       if (outward.lengthSq() < 1e-6) outward.set(0, 1, 0);
       else outward.normalize();
-      sprite.position.copy(c.position).addScaledVector(outward, 0.95);
+      sprite.position.copy(tmp).addScaledVector(outward, 1.05);
+    }
+
+    for (const arrow of this.targetArrows) {
+      const c = arrow.userData.followCubie;
+      if (!c || !c.parent) continue;
+      this._cubieLocalPos(c, tmp);
+      const outward = tmp.clone();
+      if (outward.lengthSq() < 1e-6) outward.set(0, 1, 0);
+      else outward.normalize();
+      // Tip near cubie surface, shaft floats outside; arrow points inward at the piece
+      arrow.position.copy(tmp).addScaledVector(outward, 1.15);
+      inward.copy(outward).negate();
+      arrow.quaternion.setFromUnitVectors(yAxis, inward);
     }
   }
 
@@ -644,10 +750,12 @@ class RubiksCube {
     this.targetPulse += dt;
     const wave = 0.45 + 0.35 * (0.5 + 0.5 * Math.sin(this.targetPulse * 3.2));
     this._applyTargetGlow(wave);
-    if (this.targetLabelSprites.length) this._updateLabelPositions();
+    if (this.targetLabelSprites.length || this.targetArrows.length) {
+      this._updateTargetIndicators();
+    }
   }
 
-  _highlightFace(face) {
+    _highlightFace(face) {
     this._clearFaceOverlay();
     // During teaching targets, don't wipe target glow; only boost the turning face lightly
     if (!this.keepTargetsDuringMove) {
@@ -1168,6 +1276,7 @@ function applyStepHighlights(step) {
   cube.highlightTargets(list, {
     labels: !!(step.highlight && step.highlight.labels),
     glowColor: 0xffb84d,
+    colorKey: step.highlight && step.highlight.colorKey ? step.highlight.colorKey : null,
   });
   showTargetBadge(step.targetLabel || '');
 }
@@ -1336,9 +1445,12 @@ function initThree() {
   const dir = new THREE.DirectionalLight(0xffffff, 0.85);
   dir.position.set(5, 8, 4);
   scene.add(dir);
-  const fill = new THREE.DirectionalLight(0xaabbff, 0.25);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.28);
   fill.position.set(-4, 2, -3);
   scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xfff4e8, 0.12);
+  rim.position.set(2, -3, -5);
+  scene.add(rim);
 
   cube = new RubiksCube(scene);
   fitCubeInView();
