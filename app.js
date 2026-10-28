@@ -543,39 +543,8 @@ class RubiksCube {
     this._clearAllEmissive();
   }
 
-  _applyTargetGlow(intensity) {
-    const glow = this.targetGlowColor;
-    const colorKey = this.targetGlowColorKey;
-    for (const c of this.targetCubies) {
-      if (!c || !c.parent) continue;
-      const stickers = [];
-      c.traverse((obj) => {
-        if (obj.userData && obj.userData.isSticker && obj.material && obj.material.emissive) {
-          stickers.push(obj);
-        }
-      });
-      if (!stickers.length) continue;
-
-      if (colorKey) {
-        // Only warm-glow the taught color sticker so other faces stay true (red≠orange wash)
-        for (const obj of stickers) {
-          if (obj.userData.faceKey === colorKey) {
-            obj.material.emissive.setHex(glow);
-            obj.material.emissiveIntensity = intensity * 0.5;
-          } else {
-            obj.material.emissive.setHex(0x000000);
-            obj.material.emissiveIntensity = 0;
-          }
-        }
-      } else {
-        // Centers / multi-color: subtle self-color emissive so hues stay readable
-        for (const obj of stickers) {
-          const own = obj.userData.colorHex != null ? obj.userData.colorHex : 0xffffff;
-          obj.material.emissive.setHex(own);
-          obj.material.emissiveIntensity = intensity * 0.2;
-        }
-      }
-    }
+  _applyTargetGlow() {
+    // Target arrows identify pieces without changing the stickers' actual colors.
   }
 
   clearTargets() {
@@ -755,47 +724,30 @@ class RubiksCube {
     }
   }
 
-    _highlightFace(face) {
+  _highlightFace(face) {
     this._clearFaceOverlay();
-    // During teaching targets, don't wipe target glow; only boost the turning face lightly
-    if (!this.keepTargetsDuringMove) {
-      this._clearAllEmissive();
-    } else {
-      this._applyTargetGlow(0.55);
-    }
-    for (const c of this._cubiesOnFace(face)) {
-      c.traverse((obj) => {
-        if (obj.userData.isSticker && obj.material) {
-          // if this cubie is also a target, keep warm glow; else blue face cue
-          const isTarget = this.targetCubies.indexOf(c) !== -1;
-          if (!isTarget) {
-            obj.material.emissive.setHex(0x5b8def);
-            obj.material.emissiveIntensity = 0.45;
-          }
-        }
-      });
-    }
+    // A frame identifies the turning face without tinting its stickers.
     const { axis, dir } = FACE_AXES[face];
-    const geo = new THREE.PlaneGeometry(3.1, 3.1);
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0x5b8def,
-      transparent: true,
-      opacity: 0.15,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-    const plane = new THREE.Mesh(geo, mat);
+    const points = [
+      new THREE.Vector3(-1.6, -1.6, 0),
+      new THREE.Vector3(1.6, -1.6, 0),
+      new THREE.Vector3(1.6, 1.6, 0),
+      new THREE.Vector3(-1.6, 1.6, 0),
+    ];
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({ color: 0x5bafff, depthTest: true });
+    const frame = new THREE.LineLoop(geometry, material);
     if (axis === 'x') {
-      plane.rotation.y = Math.PI / 2;
-      plane.position.x = dir * 1.58;
+      frame.rotation.y = Math.PI / 2;
+      frame.position.x = dir * 1.59;
     } else if (axis === 'y') {
-      plane.rotation.x = -Math.PI / 2;
-      plane.position.y = dir * 1.58;
+      frame.rotation.x = -Math.PI / 2;
+      frame.position.y = dir * 1.59;
     } else {
-      plane.position.z = dir * 1.58;
+      frame.position.z = dir * 1.59;
     }
-    this.group.add(plane);
-    this.highlightMesh = plane;
+    this.group.add(frame);
+    this.highlightMesh = frame;
   }
 
   enqueue(move, { record = true, silent = false, teaching = false } = {}) {
@@ -1302,7 +1254,7 @@ async function startPlayback(index, continuous = false) {
           const how = document.createElement('strong');
           how.textContent = `第 ${j + 1} / ${moves.length} 步：${faceNames[move.face]}${direction}（${move.notation}）`;
           const rule = document.createElement('span');
-          rule.textContent = (i >= 2 ? '黃上、綠前。' : '白上、綠前。') + '正對要轉的面判斷方向；藍色標示轉動面，橘光標示目標方塊。';
+          rule.textContent = (i >= 2 ? '黃上、綠前。' : '白上、綠前。') + '正對要轉的面判斷方向；藍色外框標示轉動面，橘色箭頭指向目標方塊。';
           const why = document.createElement('span');
           why.textContent = '為什麼要依序轉？' + purposes[i][exampleIndex] + '請完成整組動作，再觀察變化。';
           videoMove.append(how, rule, why);
