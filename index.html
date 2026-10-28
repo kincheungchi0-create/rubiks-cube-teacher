@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="mode-teach ui-minimal no-header no-sidebar cinema">
+<body class="mode-teach no-header">
   <div id="app">
     <div id="stage">
       <div id="viewport" aria-label="立體魔方視圖"></div>
@@ -33,7 +33,7 @@
       </div>
     </div>
 
-    <aside id="sidebar" hidden aria-hidden="true">
+    <aside id="sidebar">
       <div class="side-tabs" role="tablist">
         <button type="button" class="side-tab active" data-tab="teach" role="tab" aria-selected="true">教學</button>
         <button type="button" class="side-tab" data-tab="formulas" role="tab" aria-selected="false">公式</button>
@@ -44,8 +44,12 @@
         <div class="tab-pane active" id="tab-teach" role="tabpanel">
           <section class="panel teach-only" id="step-panel">
             <h2>層先法教學 <span class="badge" id="step-badge">1 / 7</span></h2>
+            <details class="stage-picker"><summary>選擇教學階段</summary><ol id="checklist" class="checklist" aria-label="教學階段"></ol></details>
+            <p class="tutorial-intro">先選擇階段，找出目標方塊，再跟著公式一步一步轉。每個公式都有適用條件，請先對照說明。</p>
             <div class="step-title" id="step-title"></div>
             <div class="step-desc" id="step-desc"></div>
+            <p id="orientation-note" class="orientation-note"></p>
+            <p class="tutorial-intro">以下是練習公式，不會自動判斷你的魔方或提供完整解法。完整示範會先重設畫面中的魔方。</p>
             <div id="algo-list" class="algo-list-compact"></div>
             <div class="nav-row">
               <button type="button" id="btn-prev" title="快捷鍵 [">上一步</button>
@@ -99,7 +103,6 @@
     <span id="speed-label"></span>
     <input type="checkbox" id="show-move-pad" />
     <button type="button" id="btn-listen"></button>
-    <ul id="checklist"></ul>
   </div>
 
   <script type="importmap">

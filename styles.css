@@ -1343,3 +1343,20 @@ body.cinema .target-badge {
     padding: 7px 12px;
   }
 }
+
+/* Beginner tutorial */
+.stage-picker { margin-bottom: 14px; }
+.stage-picker summary { cursor: pointer; color: var(--accent-hover); font-weight: 700; padding: 8px 0; }
+.checklist { margin-top: 8px; }
+.checklist li { padding: 0; }
+.checklist li button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.tutorial-intro, .orientation-note, .move-guide-hint, .move-guide-status { font-size: .84rem; line-height: 1.55; color: var(--text-muted); margin-bottom: 12px; }
+.orientation-note { color: #d9e5ff; background: rgba(91,141,239,.12); border-radius: 8px; padding: 10px; }
+.move-guide { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.move-guide-list { list-style: none; display: grid; gap: 5px; margin-bottom: 10px; }
+.move-guide-list li { padding: 7px 9px; border-radius: 7px; color: var(--text-muted); background: var(--bg); font-size: .87rem; }
+.move-guide-list li.current { color: #fff; background: rgba(91,141,239,.24); box-shadow: inset 3px 0 var(--accent); }
+.move-guide-list li.done { color: var(--success); }
+.move-guide-next { border: 0; border-radius: 8px; background: var(--accent); color: white; font: inherit; font-weight: 700; min-height: 42px; padding: 8px 14px; cursor: pointer; }
+.move-guide-next:disabled { opacity: .6; }
+.move-guide-status { margin: 8px 0 0; }

@@ -91,7 +91,7 @@ const STEPS = [
   },
   {
     title: '砌白面四個角（完成第一層）',
-    desc: '而家睇吓要搵邊啲塊：標咗四粒白角。將白角擺到右前上方，重覆 R U R\' U\' 直到角落位。左邊可用 L\' U\' L U。',
+    desc: '完成白十字後，將整個魔方翻轉，讓白色在下、黃色在上。把要放入的白角移到目標位置的右前上方，重複右手公式，直到白角進入右前下方。',
     targetLabel: '而家標咗：白色角塊',
     highlight: { type: 'corners-with', colorKey: 'U' },
     algos: [
@@ -1397,8 +1397,10 @@ function buildMovePad() {
 function renderStep() {
   const step = STEPS[currentStep];
   document.getElementById('step-badge').textContent = currentStep + 1 + ' / ' + STEPS.length;
-  document.getElementById('step-title').textContent = step.title;
+  document.getElementById('step-title').textContent = '階段 ' + (currentStep + 1) + '：' + step.title;
   document.getElementById('step-desc').textContent = step.desc;
+  const orientation = document.getElementById('orientation-note');
+  orientation.textContent = currentStep >= 2 ? '實體魔方：白色朝下、黃色朝上。畫面中的方向仍以固定的白上、綠前為準；拖曳畫面只會改變視角。' : '握法：白色朝上、綠色朝前。畫面可拖曳旋轉視角。';
 
   const list = document.getElementById('algo-list');
   list.innerHTML = '';
@@ -1413,10 +1415,49 @@ function renderStep() {
     box.querySelector('.algo-name').textContent = algo.name;
     box.querySelector('.algo-moves').textContent = algo.moves;
     box.querySelector('.algo-explain').textContent = algo.explain;
+    const moves = parseAlgorithm(algo.moves);
+    const guide = document.createElement('div');
+    guide.className = 'move-guide';
+    guide.innerHTML = '<p class="move-guide-hint">依序操作；方向以正面看著要轉的那一面為準。按按鈕可讓畫面中的魔方轉一步。</p><ol class="move-guide-list"></ol><button type="button" class="move-guide-next">執行第 1 步</button><p class="move-guide-status" aria-live="polite"></p>';
+    const moveList = guide.querySelector('ol');
+    const next = guide.querySelector('button');
+    const progress = guide.querySelector('.move-guide-status');
+    const faceNames = { R: '右面', L: '左面', U: '上面', D: '下面', F: '前面', B: '後面' };
+    const items = moves.map((move, index) => {
+      const item = document.createElement('li');
+      const direction = move.turns === 2 ? '轉 180°（半圈）' : move.turns === -1 ? '逆時針轉 90°' : '順時針轉 90°';
+      item.textContent = `${index + 1}. ${move.notation}｜${faceNames[move.face]}${direction}`;
+      moveList.appendChild(item);
+      return item;
+    });
+    let position = 0;
+    const updateGuide = () => {
+      items.forEach((item, index) => {
+        item.classList.toggle('current', index === position);
+        item.classList.toggle('done', index < position);
+      });
+      next.textContent = position < moves.length ? `執行第 ${position + 1} 步` : '再做一次';
+      progress.textContent = position < moves.length ? `下一步：${items[position].textContent}` : '公式完成；確認方塊位置後再繼續。';
+    };
+    next.addEventListener('click', async () => {
+      if (demoRunning || courseRunning || cube.busy()) {
+        setStatus('請等目前動作完成');
+        return;
+      }
+      if (position === moves.length) position = 0;
+      next.disabled = true;
+      await animateMovePromise(moves[position], false);
+      position++;
+      updateGuide();
+      next.disabled = false;
+    });
+    updateGuide();
+    box.appendChild(guide);
     const actions = box.querySelector('.algo-actions');
     const demoBtn = document.createElement('button');
     demoBtn.type = 'button';
-    demoBtn.textContent = '示範呢條';
+    demoBtn.textContent = '從還原狀態示範';
+    demoBtn.title = '示範會先將畫面中的魔方還原';
     demoBtn.addEventListener('click', () => runAlgoDemo(algo.moves, []));
     const listenBtn = document.createElement('button');
     listenBtn.type = 'button';
@@ -1456,13 +1497,14 @@ function renderChecklist() {
   STEPS.forEach((s, i) => {
     const li = document.createElement('li');
     if (i === currentStep) li.classList.add('current');
-    if (i < currentStep) li.classList.add('done');
-    li.innerHTML = '<span class="num"></span><span class="txt"></span>';
-    li.querySelector('.num').textContent = i < currentStep ? '✓' : String(i + 1);
+    li.innerHTML = '<button type="button"><span class="num"></span><span class="txt"></span></button>';
+    if (i === currentStep) li.querySelector('button').setAttribute('aria-current', 'step');
+    li.querySelector('.num').textContent = String(i + 1);
     li.querySelector('.txt').textContent = s.title;
-    li.addEventListener('click', () => {
+    li.querySelector('button').addEventListener('click', () => {
       currentStep = i;
       renderStep();
+      document.querySelector('.stage-picker').open = false;
       maybeAutoplayStepVoice();
     });
     ul.appendChild(li);
