@@ -12,6 +12,24 @@ const COLORS = {
   plastic: 0x111111,
 };
 
+const COLOR_LABEL = {
+  U: '白',
+  D: '黃',
+  F: '綠',
+  B: '藍',
+  R: '紅',
+  L: '橙',
+};
+
+const FACE_COLOR_KEY = {
+  [COLORS.U]: 'U',
+  [COLORS.D]: 'D',
+  [COLORS.F]: 'F',
+  [COLORS.B]: 'B',
+  [COLORS.R]: 'R',
+  [COLORS.L]: 'L',
+};
+
 const FACE_AXES = {
   R: { axis: 'x', dir: 1 },
   L: { axis: 'x', dir: -1 },
@@ -29,8 +47,10 @@ const MOVE_LIST = [
 
 const STEPS = [
   {
-    title: '明白顏色同中心塊',
-    desc: '第一步：先認清楚六個中心塊。中心塊決定嗰一面嘅顏色，相對位置唔會變。記住：白色對黃色、紅色對橙色、藍色對綠色。跟教學時保持白色喺上面、綠色喺前面。睇清楚顏色之後，就可以開始砌白十字。',
+    title: '點睇亂魔方：中心、邊、角',
+    desc: '對住而家呢粒亂魔方：先認六個中心塊（決定面色，白對黃、紅對橙、藍對綠）。保持白上綠前。分清邊塊（兩色）同角塊（三色）。掃亂面時先搵白中心，再搵白邊，黃色暫時唔理。',
+    targetLabel: '而家標咗：六個中心塊',
+    highlight: { type: 'centers', labels: true },
     algos: [
       {
         name: '認識符號',
@@ -40,15 +60,19 @@ const STEPS = [
       {
         name: '性感公式預覽（稍後會用）',
         moves: "R U R' U'",
-        explain: '呢條叫 Sexy Move，好短好常用，第 3 步砌白角會用到。而家可以撳示範睇下動畫。',
+        explain: '呢條叫 Sexy Move，好短好常用，第 3 步砌白角會用到。',
       },
     ],
+    // 只做示意轉面，唔會 reset；對住你而家嘅亂魔方示範符號
+    liveDemoMoves: "R U F R' U' F'",
     demoSetup: [],
-    demoMoves: "R U F R' U' F'",
+    demoMoves: '',
   },
   {
     title: '砌白十字',
-    desc: '第二步：將四條白色邊塊砌去白色中心周圍，形成十字。每條白邊嘅側面顏色都要同中間層中心對齊。做法：先搵一條白邊，扭到下面，對準側面顏色，再翻上去。四條都對齊，白十字就完成。',
+    desc: '而家睇吓亂魔方要搵邊啲塊：標咗四條白邊。目標係圍住白中心砌十字，側面顏色要同中間層中心對齊。先認清楚邊四粒，再學點翻上去。',
+    targetLabel: '而家標咗：白色邊塊',
+    highlight: { type: 'edges-with', colorKey: 'U' },
     algos: [
       {
         name: '下層白邊翻上（白朝下）',
@@ -58,20 +82,23 @@ const STEPS = [
       {
         name: '側邊白邊翻上',
         moves: "F D F'",
-        explain: '白邊喺中間層時，可以扭到下面再對齊。示範係其中一種常見手勢。',
+        explain: '白邊喺中間層時，可以扭到下面再對齊。',
       },
     ],
-    demoSetup: ['R', 'U', "F'", 'D', 'L'],
-    demoMoves: "F2 U R U' R' F'",
+    liveDemoMoves: '',
+    demoSetup: [],
+    demoMoves: '',
   },
   {
     title: '砌白面四個角（完成第一層）',
-    desc: '第三步：將白角擺喺右前上方，重覆性感公式 R U R\' U\'（通常 1～5 次）直到白角落位。左邊可用鏡像 L\' U\' L U。四個白角砌好，第一層就齊。',
+    desc: '而家睇吓要搵邊啲塊：標咗四粒白角。將白角擺到右前上方，重覆 R U R\' U\' 直到角落位。左邊可用 L\' U\' L U。',
+    targetLabel: '而家標咗：白色角塊',
+    highlight: { type: 'corners-with', colorKey: 'U' },
     algos: [
       {
         name: '性感公式 Sexy Move',
         moves: "R U R' U'",
-        explain: '白角喺右前上（頂層），白貼紙唔使一定朝上——重覆呢條直到角塊跌入右前下。通常做 1～5 次。',
+        explain: '白角喺右前上（頂層），重覆呢條直到角塊跌入右前下。通常做 1～5 次。',
       },
       {
         name: '反方向（左邊）',
@@ -79,12 +106,15 @@ const STEPS = [
         explain: '如果想喺左前位砌角，用鏡像版本。',
       },
     ],
-    demoSetup: ['R', 'U', "R'", "U'", 'R', 'U', "R'"],
-    demoMoves: "R U R' U' R U R' U' R U R' U'",
+    liveDemoMoves: '',
+    demoSetup: [],
+    demoMoves: '',
   },
   {
     title: '砌中間層四條邊',
-    desc: '第四步：搵頂層冇黃色嘅邊塊，先將側面顏色對準前面中心。要去右邊用 U R U\' R\' U\' F\' U F；要去左邊用對稱公式。插入後檢查中間層係咪齊色。',
+    desc: '而家睇吓要搵邊啲塊：標咗冇白冇黃嘅中間層邊。先對準前面中心，再用右插或左插公式放入中間層。',
+    targetLabel: '而家標咗：中間層邊塊',
+    highlight: { type: 'equator-edges' },
     algos: [
       {
         name: '中間層插入（去右）',
@@ -97,25 +127,31 @@ const STEPS = [
         explain: '對稱版本：邊塊要插入去左前方中間位。',
       },
     ],
-    demoSetup: ['R', 'U', "R'", "U'", "F'", 'U', 'F'],
-    demoMoves: "U R U' R' U' F' U F",
+    liveDemoMoves: '',
+    demoSetup: [],
+    demoMoves: '',
   },
   {
     title: '砌黃十字',
-    desc: '第五步：淨係睇黃色頂面，角暫時唔理。公式係 F R U R\' U\' F\'。見到 L 形就放左上角做一次；如果係一字，先做一次變 L，再做一次變十字。',
+    desc: '而家睇吓要搵邊啲塊：標咗四條黃邊。淨係睇黃色頂面邊，角暫時唔理。用 F R U R\' U\' F\' 由 L／一字變成十字。',
+    targetLabel: '而家標咗：黃色邊塊',
+    highlight: { type: 'edges-with', colorKey: 'D' },
     algos: [
       {
         name: "黃十字公式（F R U R' U' F'）",
         moves: "F R U R' U' F'",
-        explain: '由「L 形」（兩條黃邊相鄰）開始最易：將 L 形放喺左上角，做一次就變十字。如果係一字，將橫線水平再做一次變 L，再做一次變十字。如果得個黃中心，就要做三次。',
+        explain: '由「L 形」開始最易：將 L 形放喺左上角，做一次就變十字。',
       },
     ],
-    demoSetup: ['F', 'R', 'U', "R'", "U'", "F'"],
-    demoMoves: "F R U R' U' F'",
+    liveDemoMoves: '',
+    demoSetup: [],
+    demoMoves: '',
   },
   {
     title: '砌黃面',
-    desc: '第六步：用 Sune（R U R\' U R U2 R\'）砌完整黃面。見到魚形（淨一隻黃角朝上）就對準方位再做；另一方向用反 Sune。做到所有黃角朝上就得。',
+    desc: '而家睇吓要搵邊啲塊：標咗四隻黃角。用 Sune 或反 Sune 將黃角翻到朝上，砌完整黃面。',
+    targetLabel: '而家標咗：黃色角塊',
+    highlight: { type: 'corners-with', colorKey: 'D' },
     algos: [
       {
         name: 'Sune',
@@ -133,17 +169,20 @@ const STEPS = [
         explain: '有時重覆 Sexy 都可以導向魚形，再接 Sune。',
       },
     ],
-    demoSetup: ['R', 'U', "R'", 'U', 'R', 'U2', "R'"],
-    demoMoves: "R U R' U R U2 R'",
+    liveDemoMoves: '',
+    demoSetup: [],
+    demoMoves: '',
   },
   {
     title: '排好頂層角同邊（完成）',
-    desc: '最後一步：先用角交換公式將四隻角換到啱位，再用 Ua 邊三循環排邊。角啱、邊啱，魔方就還原。可以再撳「由頭播教學」溫一次。',
+    desc: '而家睇吓要搵邊啲塊：標咗頂層角同邊。先交換角到啱位，再用 Ua 排邊。角啱、邊啱就還原。',
+    targetLabel: '而家標咗：頂層角同邊',
+    highlight: { type: 'last-layer' },
     algos: [
       {
         name: '頂層角交換（新手）',
         moves: "R' F R' B2 R F' R' B2 R2",
-        explain: '保持參考角定位後執行；可能要做兩次。詳見「常用公式」分頁。',
+        explain: '保持參考角定位後執行；可能要做兩次。',
       },
       {
         name: '頂層邊三循環（Ua）',
@@ -151,8 +190,9 @@ const STEPS = [
         explain: '角啱咗但邊未啱：搵一條已經啱嘅邊放後面，做呢條三循環。',
       },
     ],
+    liveDemoMoves: '',
     demoSetup: [],
-    demoMoves: "R U' R U R U R U' R' U' R2",
+    demoMoves: '',
   },
 ];
 
@@ -319,6 +359,11 @@ class RubiksCube {
     this.history = [];
     this.speed = 1;
     this.highlightMesh = null;
+    this.targetCubies = [];
+    this.targetLabelSprites = [];
+    this.targetGlowColor = 0xffcc66;
+    this.targetPulse = 0;
+    this.keepTargetsDuringMove = false;
     this.onIdle = null;
     this._build();
   }
@@ -335,15 +380,21 @@ class RubiksCube {
           if (x === 0 && y === 0 && z === 0) continue;
           const cubie = new THREE.Group();
           cubie.userData.grid = { x, y, z };
+          cubie.userData.home = { x, y, z };
+
+          const absCount = (x !== 0 ? 1 : 0) + (y !== 0 ? 1 : 0) + (z !== 0 ? 1 : 0);
+          cubie.userData.kind = absCount === 1 ? 'center' : absCount === 2 ? 'edge' : 'corner';
 
           const body = new THREE.Mesh(
             new THREE.BoxGeometry(size, size, size),
             new THREE.MeshStandardMaterial({ color: COLORS.plastic, roughness: 0.45, metalness: 0.08 })
           );
           body.castShadow = false;
+          body.userData.isBody = true;
           cubie.add(body);
 
-          const addSticker = (nx, ny, nz, color) => {
+          const colorKeys = [];
+          const addSticker = (nx, ny, nz, color, faceKey) => {
             const geo = new THREE.PlaneGeometry(stickerSize, stickerSize);
             const mat = new THREE.MeshStandardMaterial({
               color,
@@ -363,15 +414,23 @@ class RubiksCube {
               sticker.rotation.y = Math.PI;
             }
             sticker.userData.isSticker = true;
+            sticker.userData.colorHex = color;
+            sticker.userData.faceKey = faceKey;
             cubie.add(sticker);
+            colorKeys.push(faceKey);
           };
 
-          if (x === 1) addSticker(1, 0, 0, COLORS.R);
-          if (x === -1) addSticker(-1, 0, 0, COLORS.L);
-          if (y === 1) addSticker(0, 1, 0, COLORS.U);
-          if (y === -1) addSticker(0, -1, 0, COLORS.D);
-          if (z === 1) addSticker(0, 0, 1, COLORS.F);
-          if (z === -1) addSticker(0, 0, -1, COLORS.B);
+          if (x === 1) addSticker(1, 0, 0, COLORS.R, 'R');
+          if (x === -1) addSticker(-1, 0, 0, COLORS.L, 'L');
+          if (y === 1) addSticker(0, 1, 0, COLORS.U, 'U');
+          if (y === -1) addSticker(0, -1, 0, COLORS.D, 'D');
+          if (z === 1) addSticker(0, 0, 1, COLORS.F, 'F');
+          if (z === -1) addSticker(0, 0, -1, COLORS.B, 'B');
+
+          cubie.userData.colorKeys = colorKeys.slice();
+          if (cubie.userData.kind === 'center') {
+            cubie.userData.centerFace = colorKeys[0];
+          }
 
           cubie.position.set(x, y, z);
           this.group.add(cubie);
@@ -386,6 +445,7 @@ class RubiksCube {
     this.history = [];
     this.animating = false;
     this._clearHighlight();
+    this.clearTargets();
     while (this.pivot.children.length) {
       const c = this.pivot.children[0];
       this.pivot.remove(c);
@@ -405,13 +465,66 @@ class RubiksCube {
     });
   }
 
-  _clearHighlight() {
+  findCenters() {
+    return this.cubies.filter((c) => c.userData.kind === 'center');
+  }
+
+  findEdgesWithColor(colorKey) {
+    return this.cubies.filter(
+      (c) => c.userData.kind === 'edge' && (c.userData.colorKeys || []).includes(colorKey)
+    );
+  }
+
+  findCornersWithColor(colorKey) {
+    return this.cubies.filter(
+      (c) => c.userData.kind === 'corner' && (c.userData.colorKeys || []).includes(colorKey)
+    );
+  }
+
+  findEquatorEdges() {
+    // 中間層四條邊：冇白（U）亦冇黃（D）
+    return this.cubies.filter((c) => {
+      if (c.userData.kind !== 'edge') return false;
+      const keys = c.userData.colorKeys || [];
+      return !keys.includes('U') && !keys.includes('D');
+    });
+  }
+
+  findLastLayerPieces() {
+    // 頂層相關：黃邊 + 黃角（OLL/PLL 焦點）
+    const edges = this.findEdgesWithColor('D');
+    const corners = this.findCornersWithColor('D');
+    return edges.concat(corners);
+  }
+
+  resolveHighlightSpec(spec) {
+    if (!spec) return [];
+    switch (spec.type) {
+      case 'centers':
+        return this.findCenters();
+      case 'edges-with':
+        return this.findEdgesWithColor(spec.colorKey || 'U');
+      case 'corners-with':
+        return this.findCornersWithColor(spec.colorKey || 'U');
+      case 'equator-edges':
+        return this.findEquatorEdges();
+      case 'last-layer':
+        return this.findLastLayerPieces();
+      default:
+        return [];
+    }
+  }
+
+  _clearFaceOverlay() {
     if (this.highlightMesh) {
       this.group.remove(this.highlightMesh);
       this.highlightMesh.geometry.dispose();
       this.highlightMesh.material.dispose();
       this.highlightMesh = null;
     }
+  }
+
+  _clearAllEmissive() {
     for (const c of this.cubies) {
       c.traverse((obj) => {
         if (obj.isMesh && obj.material && obj.material.emissive) {
@@ -422,13 +535,135 @@ class RubiksCube {
     }
   }
 
+  _clearHighlight() {
+    this._clearFaceOverlay();
+    this._clearAllEmissive();
+  }
+
+  _applyTargetGlow(intensity) {
+    const glow = this.targetGlowColor;
+    for (const c of this.targetCubies) {
+      if (!c || !c.parent) continue;
+      c.traverse((obj) => {
+        if (obj.userData && obj.userData.isSticker && obj.material && obj.material.emissive) {
+          obj.material.emissive.setHex(glow);
+          obj.material.emissiveIntensity = intensity;
+        }
+      });
+    }
+  }
+
+  clearTargets() {
+    this._removeTargetLabels();
+    this.targetCubies = [];
+    this.targetPulse = 0;
+    this.keepTargetsDuringMove = false;
+    // only clear emissive if no face overlay active mid-move — safe full clear of sticker glow
+    this._clearAllEmissive();
+  }
+
+  _removeTargetLabels() {
+    for (const s of this.targetLabelSprites) {
+      if (s.parent) s.parent.remove(s);
+      if (s.material) {
+        if (s.material.map) s.material.map.dispose();
+        s.material.dispose();
+      }
+    }
+    this.targetLabelSprites = [];
+  }
+
+  _makeLabelSprite(text, colorHex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 128, 128);
+    ctx.beginPath();
+    ctx.arc(64, 64, 52, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#' + (colorHex >>> 0).toString(16).padStart(6, '0');
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 56px "Noto Sans TC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 64, 66);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(0.55, 0.55, 0.55);
+    sprite.renderOrder = 10;
+    return sprite;
+  }
+
+  highlightTargets(cubies, opts = {}) {
+    this.clearTargets();
+    this.targetCubies = (cubies || []).slice();
+    this.targetGlowColor = opts.glowColor != null ? opts.glowColor : 0xffcc66;
+    this.keepTargetsDuringMove = true;
+    this._showLabels = !!opts.labels;
+    this._applyTargetGlow(0.7);
+
+    if (opts.labels) {
+      for (const c of this.targetCubies) {
+        if (c.userData.kind !== 'center') continue;
+        const faceKey = c.userData.centerFace;
+        const label = COLOR_LABEL[faceKey] || faceKey;
+        const colorHex = COLORS[faceKey] || 0xffffff;
+        const sprite = this._makeLabelSprite(label, colorHex);
+        sprite.userData.followCubie = c;
+        this.group.add(sprite);
+        this.targetLabelSprites.push(sprite);
+      }
+      this._updateLabelPositions();
+    }
+  }
+
+  _updateLabelPositions() {
+    for (const sprite of this.targetLabelSprites) {
+      const c = sprite.userData.followCubie;
+      if (!c || !c.parent) continue;
+      const outward = c.position.clone();
+      if (outward.lengthSq() < 1e-6) outward.set(0, 1, 0);
+      else outward.normalize();
+      sprite.position.copy(c.position).addScaledVector(outward, 0.95);
+    }
+  }
+
+  updateTargetPulse(dt) {
+    if (!this.targetCubies.length) return;
+    this.targetPulse += dt;
+    const wave = 0.45 + 0.35 * (0.5 + 0.5 * Math.sin(this.targetPulse * 3.2));
+    this._applyTargetGlow(wave);
+    if (this.targetLabelSprites.length) this._updateLabelPositions();
+  }
+
   _highlightFace(face) {
-    this._clearHighlight();
+    this._clearFaceOverlay();
+    // During teaching targets, don't wipe target glow; only boost the turning face lightly
+    if (!this.keepTargetsDuringMove) {
+      this._clearAllEmissive();
+    } else {
+      this._applyTargetGlow(0.55);
+    }
     for (const c of this._cubiesOnFace(face)) {
       c.traverse((obj) => {
         if (obj.userData.isSticker && obj.material) {
-          obj.material.emissive.setHex(0x5b8def);
-          obj.material.emissiveIntensity = 0.55;
+          // if this cubie is also a target, keep warm glow; else blue face cue
+          const isTarget = this.targetCubies.indexOf(c) !== -1;
+          if (!isTarget) {
+            obj.material.emissive.setHex(0x5b8def);
+            obj.material.emissiveIntensity = 0.45;
+          }
         }
       });
     }
@@ -534,7 +769,12 @@ class RubiksCube {
         this._finalizeTurn(cubies);
         if (record) this.history.push({ ...move });
         this.animating = false;
-        this._clearHighlight();
+        this._clearFaceOverlay();
+        if (this.keepTargetsDuringMove && this.targetCubies.length) {
+          this._applyTargetGlow(0.65);
+        } else {
+          this._clearAllEmissive();
+        }
         if (!silent && this.queue.length === 0) setStatus('準備就緒');
         this._pump();
       }
@@ -596,7 +836,7 @@ class RubiksCube {
     }
     setStatus('打亂中（' + n + ' 步）…', true);
     for (const m of seq) this.enqueue(m, { record: true, silent: true });
-    this.enqueueCallback(() => setStatus('打亂完成 — 可以開始練習'));
+    this.enqueueCallback(() => setStatus('打亂完成 — 撳「由頭播教學」對住呢粒亂魔方聽'));
   }
 
   busy() {
@@ -894,7 +1134,50 @@ function playCurrentStepVoice() {
   return playCommentary(currentStepScript(), id, { captions: true });
 }
 
-/** 粵語旁白＋電視字幕＋點扭示範（視角可繼續拖動） */
+function waitCubeIdle(timeoutMs = 20000) {
+  return new Promise((resolve) => {
+    const start = performance.now();
+    const tick = () => {
+      if (!cube || !cube.busy()) return resolve();
+      if (performance.now() - start > timeoutMs) return resolve();
+      setTimeout(tick, 40);
+    };
+    tick();
+  });
+}
+
+function showTargetBadge(text) {
+  const el = document.getElementById('target-badge');
+  if (!el) return;
+  if (!text) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.textContent = text;
+  el.hidden = false;
+}
+
+function hideTargetBadge() {
+  showTargetBadge('');
+}
+
+function applyStepHighlights(step) {
+  if (!cube || !step) return;
+  const list = cube.resolveHighlightSpec(step.highlight);
+  cube.highlightTargets(list, {
+    labels: !!(step.highlight && step.highlight.labels),
+    glowColor: 0xffb84d,
+  });
+  showTargetBadge(step.targetLabel || '');
+}
+
+function clearStepHighlights() {
+  if (cube) cube.clearTargets();
+  hideTargetBadge();
+}
+
+/** 對住而家畫面上嘅亂魔方：粵語旁白＋字幕＋標示要整邊粒（唔會 reset） */
 async function playStepLesson() {
   if (demoRunning || (cube && cube.busy() && !courseRunning)) {
     if (!courseRunning) {
@@ -903,39 +1186,43 @@ async function playStepLesson() {
     }
   }
 
+  await waitCubeIdle();
+  if (lessonAbort) return;
+
   const step = STEPS[currentStep];
+  demoRunning = true;
+  setStatus('播緊教學：' + step.title + '（對住而家呢粒亂魔方）', true);
+
+  // Mark pieces on the *current* scramble — do not reset
+  applyStepHighlights(step);
+
   const voicePromise = playCurrentStepVoice();
 
-  demoRunning = true;
-  // Keep OrbitControls enabled so user can orbit while faces turn
-  setStatus('播緊教學：' + step.title, true);
-
   try {
-    await new Promise((r) => setTimeout(r, 280));
+    await new Promise((r) => setTimeout(r, 320));
     if (lessonAbort) return;
 
-    cube.reset();
-    if (step.demoSetup && step.demoSetup.length) {
-      for (const tok of step.demoSetup) {
-        if (!demoRunning || lessonAbort) return;
-        await animateMovePromise(parseMove(tok), true);
+    // Optional: short live demo on the same scramble (notation only etc.)
+    const live = parseAlgorithm(step.liveDemoMoves || '');
+    if (live.length) {
+      for (const m of live) {
+        if (!demoRunning || lessonAbort) break;
+        await animateMovePromise(m, false);
+        // re-assert targets after each move (cubies moved but same piece identities)
+        applyStepHighlights(step);
       }
+      setStatus('示意轉面完成 — 旁白繼續（仲係你呢粒亂魔方）');
     }
-    const moves = parseAlgorithm(step.demoMoves || '');
-    const fallback =
-      !moves.length && step.algos && step.algos[0]
-        ? parseAlgorithm(step.algos[0].moves)
-        : moves;
-    for (const m of fallback) {
-      if (!demoRunning || lessonAbort) return;
-      await animateMovePromise(m, false);
-    }
-    setStatus('呢步示範完成 — 旁白繼續');
   } finally {
     demoRunning = false;
   }
 
   await voicePromise;
+  if (!courseRunning) {
+    // keep marks briefly so user can still look, then clear
+    await new Promise((r) => setTimeout(r, 900));
+    if (!courseRunning && !demoRunning) clearStepHighlights();
+  }
 }
 
 async function playFullCourse() {
@@ -956,17 +1243,21 @@ async function playFullCourse() {
   setStatus('開始由頭播教學 — 粵語旁白＋字幕', true);
 
   try {
+    await waitCubeIdle();
+    if (lessonAbort) return;
     for (let i = 0; i < STEPS.length; i++) {
       if (lessonAbort) break;
       currentStep = i;
       renderStep();
       await playStepLesson();
       if (lessonAbort) break;
-      await new Promise((r) => setTimeout(r, 400));
+      clearStepHighlights();
+      await new Promise((r) => setTimeout(r, 450));
     }
-    if (!lessonAbort) setStatus('成套教學播完 — 可以再撳「由頭播教學」');
+    if (!lessonAbort) setStatus('成套教學播完 — 可以再撳「由頭播教學」溫習呢粒亂魔方');
   } finally {
     courseRunning = false;
+    clearStepHighlights();
     if (stopAll) stopAll.hidden = true;
     if (playAll) {
       playAll.disabled = false;
@@ -986,7 +1277,8 @@ function stopFullCourse() {
   demoRunning = false;
   stopVoice();
   clearCaptions();
-  if (cube) cube.reset();
+  clearStepHighlights();
+  // 唔 reset：旁白要對準你而家見到嘅亂魔方
   const stopAll = document.getElementById('btn-stop-all');
   const playAll = document.getElementById('btn-play-all');
   if (stopAll) stopAll.hidden = true;
@@ -994,7 +1286,7 @@ function stopFullCourse() {
     playAll.disabled = false;
     playAll.textContent = '由頭播教學';
   }
-  setStatus('已停止教學');
+  setStatus('已停止教學 — 魔方保持而家狀態');
 }
 
 function maybeAutoplayStepVoice() {
@@ -1095,8 +1387,13 @@ function onResize() {
   fitCubeInView();
 }
 
+let _lastPulseTs = performance.now();
 function animate() {
   requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt = Math.min(0.05, (now - _lastPulseTs) / 1000);
+  _lastPulseTs = now;
+  if (cube) cube.updateTargetPulse(dt);
   controls.update();
   renderer.render(scene, camera);
 }
@@ -1337,25 +1634,8 @@ function animateMovePromise(move, silent) {
 }
 
 async function runStepDemo() {
-  if (demoRunning || cube.busy()) {
-    setStatus('等而家嘅動作做完先', true);
-    return;
-  }
-  const step = STEPS[currentStep];
-  demoRunning = true;
-  setStatus('示範呢步：' + step.title, true);
-  cube.reset();
-  if (step.demoSetup && step.demoSetup.length) {
-    for (const tok of step.demoSetup) {
-      await animateMovePromise(parseMove(tok), true);
-    }
-  }
-  const moves = parseAlgorithm(step.demoMoves);
-  for (const m of moves) {
-    await animateMovePromise(m, false);
-  }
-  demoRunning = false;
-  setStatus('呢步示範完成');
+  // 對準而家亂魔方播教學（唔 reset）
+  return playStepLesson();
 }
 
 function bindUI() {
@@ -1415,6 +1695,7 @@ function bindUI() {
     lessonAbort = true;
     demoRunning = false;
     stopVoice();
+    clearStepHighlights();
     setStatus('已停止旁白');
   });
   const autoplayBox = document.getElementById('autoplay-voice');
@@ -1564,4 +1845,4 @@ setMode('teach');
 document.body.classList.add('listen-first');
 // 一開頭 random 打亂
 cube.scramble(20);
-setStatus('已隨機打亂 — 撳「由頭播教學」開始（粵語旁白＋字幕）');
+setStatus('已隨機打亂 — 撳「由頭播教學」：對住呢粒亂魔方講解同標示');
