@@ -1183,6 +1183,7 @@ async function startPlayback(index, continuous = false) {
   const generation = ++playbackGeneration;
   lessonAbort = true;
   stopVoice();
+  document.getElementById('video-move').hidden = true;
   clearStepHighlights();
   courseRunning = true;
   updatePlaybackControls(true);
@@ -1204,11 +1205,35 @@ async function startPlayback(index, continuous = false) {
       applyStepHighlights(step);
       setStatus('播放第 ' + (i + 1) + ' 階段：' + step.title, true);
       const captions = playCurrentStepVoice();
-      for (const move of parseAlgorithm(step.liveDemoMoves || '')) {
+      const videoMove = document.getElementById('video-move');
+      const faceNames = { R: '右面', L: '左面', U: '上面', D: '下面', F: '前面', B: '後面' };
+      const examples = i === 0
+        ? [{ name: '認識轉面', moves: step.liveDemoMoves }]
+        : step.algos;
+      for (const example of examples) {
         if (generation !== playbackGeneration) break;
-        await animateMovePromise(move, false);
-        if (generation === playbackGeneration) applyStepHighlights(step);
+        const moves = parseAlgorithm(example.moves);
+        if (i !== 0) {
+          // 每條公式建立可重現的示範狀態，避免把任意亂序誤當成解題實例。
+          cube.reset();
+          videoMove.hidden = false;
+          videoMove.textContent = '準備公式示範：' + example.name;
+          for (const move of [...moves].reverse().map(invertMove)) {
+            if (generation !== playbackGeneration) break;
+            await animateMovePromise(move, true);
+          }
+        }
+        for (let j = 0; j < moves.length; j++) {
+          if (generation !== playbackGeneration) break;
+          const move = moves[j];
+          const direction = move.turns === 2 ? '轉半圈' : move.turns === -1 ? '逆時針轉 90°' : '順時針轉 90°';
+          videoMove.hidden = false;
+          videoMove.textContent = `${example.name} · ${j + 1}/${moves.length}　${move.notation}：${faceNames[move.face]}${direction}`;
+          await animateMovePromise(move, true);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
       }
+      if (generation === playbackGeneration) videoMove.hidden = true;
       await captions;
       if (generation !== playbackGeneration) return;
       clearStepHighlights();
@@ -1237,6 +1262,7 @@ function stopFullCourse() {
   lessonAbort = true;
   courseRunning = false;
   stopVoice();
+  document.getElementById('video-move').hidden = true;
   clearStepHighlights();
   updatePlaybackControls(false);
   lessonAbort = false;
@@ -1377,6 +1403,7 @@ function renderStep() {
   const step = STEPS[currentStep];
   document.getElementById('step-badge').textContent = currentStep + 1 + ' / ' + STEPS.length;
   document.getElementById('step-title').textContent = '階段 ' + (currentStep + 1) + '：' + step.title;
+  document.getElementById('video-stage-title').textContent = '階段 ' + (currentStep + 1) + ' · ' + step.title;
   document.getElementById('step-desc').textContent = step.desc;
   const orientation = document.getElementById('orientation-note');
   orientation.textContent = currentStep >= 2 ? '實體魔方：白色朝下、黃色朝上。畫面中的方向仍以固定的白上、綠前為準；拖曳畫面只會改變視角。' : '握法：白色朝上、綠色朝前。畫面可拖曳旋轉視角。';

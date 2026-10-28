@@ -1360,3 +1360,14 @@ body.cinema .target-badge {
 .move-guide-next { border: 0; border-radius: 8px; background: var(--accent); color: white; font: inherit; font-weight: 700; min-height: 42px; padding: 8px 14px; cursor: pointer; }
 .move-guide-next:disabled { opacity: .6; }
 .move-guide-status { margin: 8px 0 0; }
+
+/* Keep the lesson screen focused on stage playback. */
+#sidebar [hidden] { display: none !important; }
+.video-heading { position: absolute; top: 24px; left: 28px; z-index: 3; display: grid; gap: 5px; pointer-events: none; }
+.video-heading span { color: #91a6d0; font-size: .75rem; font-weight: 700; letter-spacing: .1em; }
+.video-heading strong { color: #f4f7ff; font-size: clamp(1rem, 2vw, 1.5rem); }
+.video-move { position: absolute; top: 86px; left: 28px; z-index: 4; max-width: calc(100% - 56px); padding: 10px 14px; border: 1px solid rgba(123,162,247,.35); border-radius: 10px; background: rgba(18,25,41,.9); color: #fff; font-size: .95rem; font-weight: 700; pointer-events: none; }
+.video-move[hidden] { display: none; }
+body.no-header .listen-primary-row button { border: 1px solid var(--border); border-radius: 9px; padding: 9px 15px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+body.no-header .listen-primary-row .stop-all-btn { background: #303748; }
+@media (max-width: 900px) { .video-heading { top: 12px; left: 14px; } .video-move { top: 62px; left: 14px; max-width: calc(100% - 28px); font-size: .8rem; } }

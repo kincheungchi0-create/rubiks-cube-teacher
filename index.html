@@ -16,6 +16,8 @@
   <div id="app">
     <div id="stage">
       <div id="viewport" aria-label="立體魔方視圖"></div>
+      <div class="video-heading"><span>魔方教室 · 階段教學</span><strong id="video-stage-title">認識魔方</strong></div>
+      <div id="video-move" class="video-move" hidden aria-live="polite"></div>
 
       <div id="target-badge" class="target-badge" hidden aria-live="polite"></div>
 
@@ -34,7 +36,7 @@
     </div>
 
     <aside id="sidebar">
-      <div class="side-tabs" role="tablist">
+      <div class="side-tabs" role="tablist" hidden>
         <button type="button" class="side-tab active" data-tab="teach" role="tab" aria-selected="true">教學</button>
         <button type="button" class="side-tab" data-tab="formulas" role="tab" aria-selected="false">公式</button>
         <button type="button" class="side-tab secondary-tab" data-tab="keys" role="tab" aria-selected="false">快捷鍵</button>
@@ -45,12 +47,12 @@
           <section class="panel teach-only" id="step-panel">
             <h2>層先法教學 <span class="badge" id="step-badge">1 / 7</span></h2>
             <details class="stage-picker" open><summary>選擇階段並播放</summary><ol id="checklist" class="checklist" aria-label="教學階段"></ol></details>
-            <p class="tutorial-intro">點選階段即可播放該段教學；播放期間也可以切換階段。找出目標方塊，再跟著公式一步一步轉。</p>
-            <div class="step-title" id="step-title"></div>
-            <div class="step-desc" id="step-desc"></div>
-            <p id="orientation-note" class="orientation-note"></p>
-            <p class="tutorial-intro">以下是練習公式，不會自動判斷你的魔方或提供完整解法。完整示範會先重設畫面中的魔方。</p>
-            <div id="algo-list" class="algo-list-compact"></div>
+
+            <div class="step-title" id="step-title" hidden></div>
+            <div class="step-desc" id="step-desc" hidden></div>
+            <p id="orientation-note" class="orientation-note" hidden></p>
+
+            <div id="algo-list" class="algo-list-compact" hidden></div>
             <div class="nav-row">
               <button type="button" id="btn-prev" title="快捷鍵 [">上一步</button>
               <button type="button" id="btn-demo" class="demo">再播呢步</button>
