@@ -798,10 +798,10 @@ class RubiksCube {
     this.highlightMesh = plane;
   }
 
-  enqueue(move, { record = true, silent = false } = {}) {
+  enqueue(move, { record = true, silent = false, teaching = false } = {}) {
     const m = typeof move === 'string' ? parseMove(move) : move;
     if (!m) return;
-    this.queue.push({ type: 'move', move: m, record, silent });
+    this.queue.push({ type: 'move', move: m, record, silent, teaching });
     this._pump();
   }
 
@@ -833,7 +833,7 @@ class RubiksCube {
     this._animateMove(job.move, job);
   }
 
-  _animateMove(move, { record, silent }) {
+  _animateMove(move, { record, silent, teaching }) {
     this.animating = true;
     if (!silent) setStatus('扭緊：' + move.notation, true);
     this._highlightFace(move.face);
@@ -860,7 +860,7 @@ class RubiksCube {
       axis === 'z' ? dir : 0
     );
 
-    const duration = (move.turns === 2 ? 400 : 300) / this.speed;
+    const duration = (teaching ? (move.turns === 2 ? 1200 : 900) : (move.turns === 2 ? 400 : 300)) / this.speed;
     const start = performance.now();
     const deltaQuat = new THREE.Quaternion().setFromAxisAngle(outward, targetAngle);
 
@@ -1162,7 +1162,10 @@ function applyStepHighlights(step) {
 }
 
 function clearStepHighlights() {
-  if (cube) cube.clearTargets();
+  if (cube) {
+    cube.clearTargets();
+    cube._clearFaceOverlay();
+  }
   hideTargetBadge();
 }
 
@@ -1202,35 +1205,64 @@ async function startPlayback(index, continuous = false) {
       currentStep = i;
       renderStep();
       const step = STEPS[i];
+      // 白十字後以黃色朝上、綠色朝前，公式的方向以這個握法為準。
+      cube.group.rotation.z = i >= 2 ? Math.PI : 0;
       applyStepHighlights(step);
       setStatus('播放第 ' + (i + 1) + ' 階段：' + step.title, true);
       const captions = playCurrentStepVoice();
       const videoMove = document.getElementById('video-move');
       const faceNames = { R: '右面', L: '左面', U: '上面', D: '下面', F: '前面', B: '後面' };
+      const purposes = [
+        ['認識右、上、前各面的轉動方向，為後續步驟做準備。'],
+        ['將已對準的白邊翻到白色中心旁，建立白十字。', '把白邊移到方便重新對齊的位置。'],
+        ['將白角移入第一層，讓白面與側面顏色對齊。', '從左側練習將白角移入第一層。'],
+        ['把頂層邊塊插入右側的中間層位置。', '把頂層邊塊插入左側的中間層位置。'],
+        ['調整頂層邊塊的朝向，讓黃色邊形成十字。'],
+        ['調整頂層角塊的朝向，讓黃色朝上。', '從另一種魚形方向調整黃色角塊。', '練習角塊轉動，為後續調整做準備。'],
+        ['調整頂層角塊的位置，讓側面顏色對齊。', '循環調整頂層邊塊的位置，完成側面對齊。'],
+      ];
       const examples = i === 0
         ? [{ name: '認識轉面', moves: step.liveDemoMoves }]
         : step.algos;
-      for (const example of examples) {
+      for (const [exampleIndex, example] of examples.entries()) {
         if (generation !== playbackGeneration) break;
         const moves = parseAlgorithm(example.moves);
+        const mapMove = (move) => {
+          if (i < 2) return move;
+          const face = { U: 'D', D: 'U', R: 'L', L: 'R', F: 'F', B: 'B' }[move.face];
+          return { ...move, face };
+        };
         if (i !== 0) {
           // 每條公式建立可重現的示範狀態，避免把任意亂序誤當成解題實例。
+          clearStepHighlights();
           cube.reset();
           videoMove.hidden = false;
           videoMove.textContent = '準備公式示範：' + example.name;
-          for (const move of [...moves].reverse().map(invertMove)) {
+          for (const move of [...moves].reverse().map(invertMove).map(mapMove)) {
             if (generation !== playbackGeneration) break;
             await animateMovePromise(move, true);
           }
+          if (generation === playbackGeneration) applyStepHighlights(step);
         }
         for (let j = 0; j < moves.length; j++) {
           if (generation !== playbackGeneration) break;
           const move = moves[j];
           const direction = move.turns === 2 ? '轉半圈' : move.turns === -1 ? '逆時針轉 90°' : '順時針轉 90°';
           videoMove.hidden = false;
-          videoMove.textContent = `${example.name} · ${j + 1}/${moves.length}　${move.notation}：${faceNames[move.face]}${direction}`;
-          await animateMovePromise(move, true);
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          videoMove.replaceChildren();
+          const how = document.createElement('strong');
+          how.textContent = `第 ${j + 1} / ${moves.length} 步：${faceNames[move.face]}${direction}（${move.notation}）`;
+          const rule = document.createElement('span');
+          rule.textContent = (i >= 2 ? '黃上、綠前。' : '白上、綠前。') + '正對要轉的面判斷方向；藍色標示轉動面，橘光標示目標方塊。';
+          const why = document.createElement('span');
+          why.textContent = '這組動作的目的：' + purposes[i][exampleIndex];
+          videoMove.append(how, rule, why);
+          const actualMove = mapMove(move);
+          cube._highlightFace(actualMove.face);
+          await new Promise((resolve) => setTimeout(resolve, 1100));
+          if (generation !== playbackGeneration) break;
+          await animateMovePromise(actualMove, true, true);
+          await new Promise((resolve) => setTimeout(resolve, 700));
         }
       }
       if (generation === playbackGeneration) videoMove.hidden = true;
@@ -1657,9 +1689,9 @@ async function runAlgoDemo(movesStr, setup) {
   setStatus('示範完成 — 可以自己再試（或撳複製公式）');
 }
 
-function animateMovePromise(move, silent) {
+function animateMovePromise(move, silent, teaching = false) {
   return new Promise((resolve) => {
-    cube.enqueue(move, { record: true, silent });
+    cube.enqueue(move, { record: true, silent, teaching });
     cube.enqueueCallback(resolve);
   });
 }

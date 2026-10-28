@@ -1371,3 +1371,8 @@ body.cinema .target-badge {
 body.no-header .listen-primary-row button { border: 1px solid var(--border); border-radius: 9px; padding: 9px 15px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
 body.no-header .listen-primary-row .stop-all-btn { background: #303748; }
 @media (max-width: 900px) { .video-heading { top: 12px; left: 14px; } .video-move { top: 62px; left: 14px; max-width: calc(100% - 28px); font-size: .8rem; } }
+
+.video-move:not([hidden]) { display: grid; gap: 6px; max-width: min(440px, calc(100% - 56px)); line-height: 1.45; }
+.video-move strong { color: #fff; font-size: 1rem; }
+.video-move span { color: #c9d8f5; font-size: .8rem; font-weight: 400; }
+@media (max-width: 900px) { .video-move:not([hidden]) { max-width: min(320px, calc(100% - 28px)); } .video-move strong { font-size: .84rem; } .video-move span { font-size: .73rem; } }
